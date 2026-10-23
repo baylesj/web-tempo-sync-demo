@@ -27,6 +27,15 @@
         API. Browsers without the API get a stand-in session that only this page's tabs share.
       </p>
 
+      <nav class="view-tabs" aria-label="View">
+        <div class="seg" role="tablist">
+          <button type="button" class="on" data-tab="sequencer" role="tab" aria-selected="true">sequencer</button>
+          <button type="button" data-tab="setup" role="tab" aria-selected="false">setup &amp; hardware</button>
+          <button type="button" data-tab="api" role="tab" aria-selected="false">api &amp; code</button>
+        </div>
+      </nav>
+
+      <div id="tab-sequencer" class="tab-view">
       <section class="split" aria-labelledby="session-label">
         <h2 class="label" id="session-label"><span class="n">01</span>session</h2>
         <div class="session">
@@ -49,7 +58,14 @@
             <div class="actions">
               <button id="connect-btn" type="button">Connect</button>
               <button id="play-stop-btn" type="button" class="quiet" disabled>Play</button>
+              <button id="open-tab-btn" type="button" class="quiet" hidden>Open 2nd tab</button>
             </div>
+            <p id="standin-note" class="help" hidden>
+              Stand-in mode syncs tabs in this browser window over <code>BroadcastChannel</code>. Open a second
+              tab to hear two patterns lock beat and bar phase, or see
+              <button type="button" class="link-btn" id="go-setup-btn">setup &amp; hardware</button> to connect to
+              Ableton Live and Ableton Move.
+            </p>
 
             <div>
               <div class="field-head">
@@ -129,6 +145,192 @@
           <button id="clear-log-btn" type="button" class="quiet">Clear</button>
         </div>
       </section>
+      </div>
+
+      <div id="tab-setup" class="tab-view" hidden>
+        <section class="split" aria-labelledby="setup-tabs-label">
+          <h2 class="label" id="setup-tabs-label"><span class="n">01</span>two tabs</h2>
+          <div class="stack">
+            <p class="soft">
+              In stock browsers where <code>navigator.tempoSync</code> is not present, the page uses a
+              <code>BroadcastChannel</code> stand-in with the same API surface. No custom browser build is needed.
+            </p>
+            <ol class="steps-list">
+              <li>Click <strong>Connect</strong> in the <strong>sequencer</strong> view (the <code>api</code> row shows <code>stand-in (BroadcastChannel)</code>).</li>
+              <li>Click <strong>Open 2nd tab</strong> (or open this URL in another tab and click <strong>Connect</strong>).</li>
+              <li>Pick different patterns in each tab (for example, <em>four on the floor</em> in tab 1 and <em>syncopated</em> in tab 2) and press <strong>Play</strong> or the space bar.</li>
+              <li>Start and stop wait for the next quantum downbeat, and moving the tempo slider updates both tabs at once.</li>
+            </ol>
+          </div>
+        </section>
+
+        <section class="split" aria-labelledby="setup-live-label">
+          <h2 class="label" id="setup-live-label"><span class="n">02</span>ableton live</h2>
+          <div class="stack">
+            <p class="soft">
+              In the prototype Chromium build, the browser process joins the local Ableton Link UDP multicast group
+              (<code>224.76.78.75:20808</code>) and syncs with Ableton Live on the same laptop or local network.
+            </p>
+            <pre class="code-snippet"><code>./out/Default/Chromium.app/Contents/MacOS/Chromium \
+  --enable-blink-features=TempoSync \
+  --tempo-sync-engine=rust \
+  "https://bayl.es/tempo-sync-demo/?autoconnect=1"</code></pre>
+            <ol class="steps-list">
+              <li>In Ableton Live 12, open <strong>Settings &gt; Link, Tempo &amp; MIDI</strong> and enable <strong>Show Link Toggle</strong> and <strong>Start/Stop Sync</strong>.</li>
+              <li>Click the <strong>Link</strong> button in the top-left corner of Live.</li>
+              <li>In Chromium, check that <code>api</code> reads <code>navigator.tempoSync</code> and <code>peers</code> increments.</li>
+            </ol>
+          </div>
+        </section>
+
+        <section class="split" aria-labelledby="setup-move-label">
+          <h2 class="label" id="setup-move-label"><span class="n">03</span>ableton move</h2>
+          <div class="stack">
+            <p class="soft">
+              You do not need a Wi-Fi router to sync with an Ableton Move on the road. In Standalone Mode, Move
+              exposes a USB-C network interface (<code>http://move.local</code>) that carries Ableton Link traffic
+              over a single USB-C cable.
+            </p>
+            <ol class="steps-list">
+              <li>On Ableton Move, press <code>Shift + Step 2</code> (Setup), set <strong>Mode: Standalone</strong> (not Control Live), and turn <strong>Link: On</strong> and <strong>Sync Start/Stop: On</strong>.</li>
+              <li>Plug Move's <strong>USB-C port</strong> (next to the power port, not the USB-A port) directly into your MacBook Pro.</li>
+              <li>Launch the prototype Chromium build after plugging Move in so the Rust engine binds to the USB network interface alongside <code>en0</code> and <code>lo0</code>.</li>
+              <li>Chromium, Ableton Live, and Ableton Move discover each other and lock tempo, beat phase, and start/stop over USB.</li>
+            </ol>
+          </div>
+        </section>
+
+        <section class="split" aria-labelledby="setup-lan-label">
+          <h2 class="label" id="setup-lan-label"><span class="n">04</span>wi-fi &amp; latency</h2>
+          <div class="stack">
+            <p class="soft">
+              To sync wirelessly across multiple laptops, iPads, or hardware units, or to calibrate browser output
+              latency:
+            </p>
+            <ul class="steps-list">
+              <li><strong>Shared Wi-Fi or phone hotspot:</strong> Connect devices to a local network or phone hotspot that allows peer-to-peer UDP multicast (client isolation off).</li>
+              <li><strong>Turn off corporate VPNs:</strong> VPN tunnels often intercept or drop multicast packets on <code>224.76.78.75:20808</code>.</li>
+              <li><strong>Measure audio output offset:</strong> Enable <strong>measure output latency</strong> in section <code>03 latency</code> of the sequencer view and record this browser's output alongside Live's metronome in a DAW.</li>
+            </ul>
+          </div>
+        </section>
+      </div>
+
+      <div id="tab-api" class="tab-view" hidden>
+        <section class="split" aria-labelledby="api-audio-label">
+          <h2 class="label" id="api-audio-label"><span class="n">01</span>audio clock</h2>
+          <div class="stack">
+            <p class="soft">
+              Passing an <code>AudioContext</code> to <code>session.captureState(audioContext)</code> projects the
+              shared session timeline directly into <code>AudioContext.currentTime</code> seconds, including output
+              latency compensation:
+            </p>
+            <pre class="code-snippet"><code>const audioContext = new AudioContext();
+const session = await navigator.tempoSync.requestSession({
+  quantum: 4,
+  startStopSync: true,
+});
+
+function scheduleLookahead() {
+  const state = session.captureState(audioContext);
+  const now = audioContext.currentTime;
+  const horizon = now + 0.100; // 100 ms lookahead window
+
+  const startBeat = Math.ceil(state.beatAtTime(now, session.quantum) * 4) / 4;
+  const endBeat = state.beatAtTime(horizon, session.quantum);
+
+  for (let beat = startBeat; beat &lt; endBeat; beat += 0.25) {
+    const audioTime = state.timeAtBeat(beat, session.quantum);
+    triggerStepAtTime(beat, audioTime);
+  }
+}</code></pre>
+          </div>
+        </section>
+
+        <section class="split" aria-labelledby="api-transport-label">
+          <h2 class="label" id="api-transport-label"><span class="n">02</span>transport &amp; ui</h2>
+          <div class="stack">
+            <p class="soft">
+              Calling <code>session.captureState()</code> with no arguments uses <code>performance.now() / 1000</code>
+              for <code>requestAnimationFrame</code> visuals and transport countdowns:
+            </p>
+            <pre class="code-snippet"><code>// Quantize Play/Stop to the next quantum boundary
+function toggleQuantizedPlay() {
+  const state = session.captureState(audioContext);
+  const now = audioContext.currentTime;
+  const nextBar = Math.floor(state.beatAtTime(now, session.quantum) / session.quantum + 1) * session.quantum;
+  const at = state.timeAtBeat(nextBar, session.quantum);
+
+  state.setIsPlaying(!state.isPlaying, at);
+  session.commitState(state);
+}
+
+// 60 fps phase ring
+function renderLoop() {
+  const state = session.captureState();
+  const phase = state.phaseAtTime(performance.now() / 1000, session.quantum);
+  drawBeatRing(phase, state.tempo, state.isPlaying);
+  requestAnimationFrame(renderLoop);
+}</code></pre>
+          </div>
+        </section>
+
+        <section class="split" aria-labelledby="api-webidl-label">
+          <h2 class="label" id="api-webidl-label"><span class="n">03</span>webidl</h2>
+          <div class="stack">
+            <p class="soft">
+              The browser owns UDP multicast sockets, peer discovery, and clock-offset filtering in the browser
+              process. Pages only observe beat/phase math and peer counts:
+            </p>
+            <pre class="code-snippet"><code>[SecureContext, Exposed=Window]
+partial interface Navigator {
+  [SameObject] readonly attribute TempoSync tempoSync;
+};
+
+[SecureContext, Exposed=Window]
+interface TempoSync {
+  Promise&lt;TempoSession&gt; requestSession(optional TempoSessionOptions options = {});
+};
+
+dictionary TempoSessionOptions {
+  double quantum = 4.0;
+  boolean startStopSync = false;
+};
+
+[SecureContext, Exposed=Window]
+interface TempoSession : EventTarget {
+  readonly attribute unsigned long numPeers;
+  readonly attribute double quantum;
+  readonly attribute boolean isStartStopSyncEnabled;
+
+  TempoSessionState captureState(optional BaseAudioContext? audioContext = null);
+  undefined commitState(TempoSessionState state);
+  undefined close();
+
+  attribute EventHandler onnumpeerschange;
+  attribute EventHandler ontempochange;
+  attribute EventHandler onplayingchange;
+};
+
+[SecureContext, Exposed=Window]
+interface TempoSessionState {
+  readonly attribute double tempo;
+  readonly attribute boolean isPlaying;
+
+  double beatAtTime(double time, double quantum);
+  double phaseAtTime(double time, double quantum);
+  double timeAtBeat(double beat, double quantum);
+  readonly attribute double timeForIsPlaying;
+
+  undefined setTempo(double bpm, double atTime);
+  undefined requestBeatAtTime(double beat, double time, double quantum);
+  undefined forceBeatAtTime(double beat, double time, double quantum);
+  undefined setIsPlaying(boolean isPlaying, double atTime);
+  undefined requestBeatAtStartPlayingTime(double beat, double quantum);
+};</code></pre>
+          </div>
+        </section>
+      </div>
 
       <footer>
         <span><a href="https://bayl.es">bayl.es</a></span>

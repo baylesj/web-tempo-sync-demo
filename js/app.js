@@ -59,6 +59,15 @@ class App {
       sampleRateVal: $('sample-rate-val'),
       eventLog: $('event-log'),
       clearLogBtn: $('clear-log-btn'),
+      openTabBtn: $('open-tab-btn'),
+      standinNote: $('standin-note'),
+      goSetupBtn: $('go-setup-btn'),
+      tabButtons: Array.from(document.querySelectorAll('.view-tabs [data-tab]')),
+      tabViews: {
+        sequencer: $('tab-sequencer'),
+        setup: $('tab-setup'),
+        api: $('tab-api'),
+      },
     };
     this.#initUI();
   }
@@ -76,6 +85,16 @@ class App {
     el.quantumSelect.addEventListener('change', () => this.#onQuantumChange());
     el.latencyToggle.addEventListener('change', (e) => this.#toggleLatencyMode(e.target.checked));
     el.clearLogBtn.addEventListener('click', () => el.eventLog.replaceChildren());
+
+    for (const btn of el.tabButtons) {
+      btn.addEventListener('click', () => this.#switchTab(btn.dataset.tab));
+    }
+    el.openTabBtn?.addEventListener('click', () => {
+      window.open(window.location.href, '_blank', 'noopener');
+    });
+    el.goSetupBtn?.addEventListener('click', () => {
+      this.#switchTab('setup');
+    });
 
     // Metronome: remembered per browser.
     el.metronomeToggle.checked = Boolean(store.get('metronome', false));
@@ -124,6 +143,20 @@ class App {
     });
 
     this.#log('Press Connect to start audio and join the session.', 'INFO');
+  }
+
+  #switchTab(tabName) {
+    const el = this.#el;
+    for (const btn of el.tabButtons) {
+      const active = btn.dataset.tab === tabName;
+      btn.classList.toggle('on', active);
+      btn.setAttribute('aria-selected', String(active));
+    }
+    for (const [key, view] of Object.entries(el.tabViews)) {
+      if (view) {
+        view.hidden = key !== tabName;
+      }
+    }
   }
 
   // --- Session ---
@@ -176,6 +209,12 @@ class App {
       el.statusText.textContent = 'Connected';
       el.apiText.textContent = isNative ? 'navigator.tempoSync' : 'stand-in (BroadcastChannel)';
       el.peerCount.textContent = String(session.numPeers);
+      if (el.openTabBtn) {
+        el.openTabBtn.hidden = isNative;
+      }
+      if (el.standinNote) {
+        el.standinNote.hidden = isNative;
+      }
 
       const state = session.captureState();
       this.#syncTempoUI(state.tempo);
@@ -223,6 +262,12 @@ class App {
     el.statusText.textContent = 'Not connected';
     el.apiText.textContent = '–';
     el.peerCount.textContent = '0';
+    if (el.openTabBtn) {
+      el.openTabBtn.hidden = true;
+    }
+    if (el.standinNote) {
+      el.standinNote.hidden = true;
+    }
     this.#updatePlayButton();
     this.#log('Left the session', 'SESSION');
   }
