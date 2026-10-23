@@ -1,4 +1,26 @@
-// Beat ring canvas visualization driven by requestAnimationFrame and session.captureState().
+// The beat ring: phase within the quantum, drawn on a canvas from session.captureState().
+// Colors and fonts come from the page's CSS variables, so it follows the light and dark themes.
+
+// Resolves CSS color variables to concrete colors in the current theme. Custom properties hold
+// light-dark() unresolved, so read them through a probe element's computed color.
+export function readThemeColors(names, host = document.body) {
+  const probe = document.createElement('span');
+  probe.hidden = true;
+  host.appendChild(probe);
+  const out = {};
+  for (const name of names) {
+    probe.style.color = `var(--${name})`;
+    out[name] = getComputedStyle(probe).color;
+  }
+  probe.remove();
+  return out;
+}
+
+// Calls fn whenever the theme may have changed: the theme switch (data-theme on <html>) or the system setting.
+export function onThemeChange(fn) {
+  new MutationObserver(fn).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', fn);
+}
 
 export class BeatRing {
   #canvas;
@@ -6,17 +28,25 @@ export class BeatRing {
   #session = null;
   #animId = null;
   #dpr = 1;
+  #colors = {};
+  #fonts = { sans: 'sans-serif', mono: 'monospace' };
 
   constructor(canvas) {
     this.#canvas = canvas;
     this.#ctx = canvas.getContext('2d');
-    this.#dpr = window.devicePixelRatio || 1;
+    this.#readTheme();
     this.#resize();
-    window.addEventListener('resize', () => this.#resize());
+    new ResizeObserver(() => this.#resize()).observe(canvas);
+    onThemeChange(() => {
+      this.#readTheme();
+      this.#redrawIfIdle();
+    });
+    document.fonts?.ready.then(() => this.#redrawIfIdle());
   }
 
   setSession(session) {
     this.#session = session;
+    this.#redrawIfIdle();
   }
 
   start() {
@@ -35,19 +65,36 @@ export class BeatRing {
       cancelAnimationFrame(this.#animId);
       this.#animId = null;
     }
+    this.#draw();
+  }
+
+  #readTheme() {
+    this.#colors = readThemeColors(['ink', 'comment', 'line', 'sig', 'sig-fill', 'purple']);
+    const root = getComputedStyle(document.documentElement);
+    this.#fonts = {
+      sans: root.getPropertyValue('--sans').trim() || 'sans-serif',
+      mono: root.getPropertyValue('--mono').trim() || 'monospace',
+    };
+  }
+
+  #redrawIfIdle() {
+    if (this.#animId === null) {
+      this.#draw();
+    }
   }
 
   #resize() {
     const rect = this.#canvas.getBoundingClientRect();
-    const width = rect.width || 320;
-    const height = rect.height || 320;
     this.#dpr = window.devicePixelRatio || 1;
-    this.#canvas.width = Math.round(width * this.#dpr);
-    this.#canvas.height = Math.round(height * this.#dpr);
+    this.#canvas.width = Math.round((rect.width || 300) * this.#dpr);
+    this.#canvas.height = Math.round((rect.height || 300) * this.#dpr);
+    this.#redrawIfIdle();
   }
 
   #draw() {
     const ctx = this.#ctx;
+    const c = this.#colors;
+    const { sans, mono } = this.#fonts;
     const width = this.#canvas.width / this.#dpr;
     const height = this.#canvas.height / this.#dpr;
 
@@ -57,156 +104,80 @@ export class BeatRing {
 
     const cx = width / 2;
     const cy = height / 2;
-    const radius = Math.min(cx, cy) - 24;
+    const radius = Math.min(cx, cy) - 30;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Track
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = c.line;
+    ctx.lineWidth = 10;
+    ctx.stroke();
 
     if (!this.#session) {
-      this.#drawDisconnected(ctx, cx, cy, radius);
+      ctx.font = `13px ${mono}`;
+      ctx.fillStyle = c.comment;
+      ctx.fillText('not connected', cx, cy);
       ctx.restore();
       return;
     }
 
-    // Capture visual state in performance.now() time base
     const vis = this.#session.captureState();
-    const nowSec = performance.now() / 1000;
+    const now = performance.now() / 1000;
     const quantum = this.#session.quantum || 4;
+    const phase = vis.phaseAtTime(now, quantum);
+    const beat = vis.beatAtTime(now, quantum);
+    const playing = vis.isPlaying;
 
-    const phase = vis.phaseAtTime(nowSec, quantum);
-    const beat = vis.beatAtTime(nowSec, quantum);
-    const isPlaying = vis.isPlaying;
-    const tempo = vis.tempo;
-
-    // Draw background track ring
+    // Phase arc: signature color while playing, grey while stopped.
+    const start = -Math.PI / 2;
+    const end = start + (phase / quantum) * Math.PI * 2;
     ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-    ctx.lineWidth = 14;
-    ctx.lineCap = 'round';
+    ctx.arc(cx, cy, radius, start, end);
+    ctx.strokeStyle = playing ? c['sig-fill'] : c.comment;
+    ctx.lineWidth = 10;
+    ctx.lineCap = 'butt';
     ctx.stroke();
 
-    // Draw sweeping phase arc
-    const startAngle = -Math.PI / 2;
-    const sweep = (phase / quantum) * (Math.PI * 2);
-    const endAngle = startAngle + sweep;
-
-    if (sweep > 0.005) {
-      const grad = ctx.createLinearGradient(
-        cx + Math.cos(startAngle) * radius,
-        cy + Math.sin(startAngle) * radius,
-        cx + Math.cos(endAngle) * radius,
-        cy + Math.sin(endAngle) * radius
-      );
-      if (isPlaying) {
-        grad.addColorStop(0, '#00e5ff');
-        grad.addColorStop(1, '#10b981');
-      } else {
-        grad.addColorStop(0, '#00e5ff');
-        grad.addColorStop(1, '#3b82f6');
-      }
-
-      ctx.beginPath();
-      ctx.arc(cx, cy, radius, startAngle, endAngle);
-      ctx.strokeStyle = grad;
-      ctx.lineWidth = 14;
-      ctx.lineCap = 'round';
-      ctx.stroke();
-
-      // Playhead dot with glow
-      const headX = cx + Math.cos(endAngle) * radius;
-      const headY = cy + Math.sin(endAngle) * radius;
-
-      ctx.shadowColor = isPlaying ? '#10b981' : '#00e5ff';
-      ctx.shadowBlur = 12;
-      ctx.beginPath();
-      ctx.arc(headX, headY, 9, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    }
-
-    // Draw beat ticks around the ring
+    // Beat ticks, the downbeat longer, with numbers outside the ring.
     for (let i = 0; i < quantum; i++) {
-      const angle = startAngle + (i / quantum) * (Math.PI * 2);
-      const isDownbeat = i === 0;
-
-      const innerR = radius - (isDownbeat ? 16 : 10);
-      const outerR = radius + (isDownbeat ? 16 : 10);
-
-      const x1 = cx + Math.cos(angle) * innerR;
-      const y1 = cy + Math.sin(angle) * innerR;
-      const x2 = cx + Math.cos(angle) * outerR;
-      const y2 = cy + Math.sin(angle) * outerR;
-
+      const angle = start + (i / quantum) * Math.PI * 2;
+      const down = i === 0;
+      const r1 = radius - (down ? 12 : 8);
+      const r2 = radius + (down ? 12 : 8);
       ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.strokeStyle = isDownbeat ? '#f59e0b' : 'rgba(255, 255, 255, 0.4)';
-      ctx.lineWidth = isDownbeat ? 4 : 2;
+      ctx.moveTo(cx + Math.cos(angle) * r1, cy + Math.sin(angle) * r1);
+      ctx.lineTo(cx + Math.cos(angle) * r2, cy + Math.sin(angle) * r2);
+      ctx.strokeStyle = down ? c.ink : c.comment;
+      ctx.lineWidth = down ? 3 : 1.5;
       ctx.stroke();
 
-      // Tick number label outside ring
-      const labelR = outerR + 14;
-      const lx = cx + Math.cos(angle) * labelR;
-      const ly = cy + Math.sin(angle) * labelR;
-
-      ctx.fillStyle = isDownbeat ? '#f59e0b' : 'rgba(255, 255, 255, 0.6)';
-      ctx.font = isDownbeat ? 'bold 13px system-ui, sans-serif' : '11px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(String(i + 1), lx, ly);
+      const lr = r2 + 12;
+      ctx.font = `12px ${mono}`;
+      ctx.fillStyle = Math.floor(phase) === i ? c.ink : c.comment;
+      ctx.fillText(String(i + 1), cx + Math.cos(angle) * lr, cy + Math.sin(angle) * lr);
     }
 
-    // Center text readout
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    // Playhead
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(end) * radius, cy + Math.sin(end) * radius, 7, 0, Math.PI * 2);
+    ctx.fillStyle = c.ink;
+    ctx.fill();
 
-    // Playing state badge
-    const badgeText = isPlaying ? 'PLAYING' : 'STOPPED';
-    ctx.font = 'bold 11px system-ui, sans-serif';
-    ctx.fillStyle = isPlaying ? '#10b981' : '#64748b';
-    ctx.fillText(badgeText, cx, cy - 54);
-
-    // Large Beat Number
-    const beatInt = Math.floor(beat);
-    const barNum = Math.floor(beat / quantum) + 1;
+    // Readout: bar.beat large, then phase and tempo.
+    const bar = Math.floor(beat / quantum) + 1;
     const beatInBar = Math.floor(phase) + 1;
+    ctx.font = `600 40px ${sans}`;
+    ctx.fillStyle = c.ink;
+    ctx.fillText(`${bar}.${beatInBar}`, cx, cy - 10);
 
-    ctx.font = 'bold 44px monospace';
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillText(`Beat ${beatInt}`, cx, cy - 14);
-
-    // Bar.Beat readout
-    ctx.font = '600 14px system-ui, sans-serif';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText(`Bar ${barNum} • Beat ${beatInBar}`, cx, cy + 22);
-
-    // Phase readout
-    ctx.font = '500 14px monospace';
-    ctx.fillStyle = '#38bdf8';
-    ctx.fillText(`Phase: ${phase.toFixed(2)} / ${quantum}`, cx, cy + 46);
-
-    // BPM readout
-    ctx.font = '600 13px system-ui, sans-serif';
-    ctx.fillStyle = '#e2e8f0';
-    ctx.fillText(`${tempo.toFixed(1)} BPM`, cx, cy + 68);
+    ctx.font = `12px ${mono}`;
+    ctx.fillStyle = c.comment;
+    ctx.fillText(`${playing ? 'playing' : 'stopped'} · phase ${phase.toFixed(2)}/${quantum}`, cx, cy + 22);
+    ctx.fillStyle = c.purple;
+    ctx.fillText(`${vis.tempo.toFixed(1)} bpm`, cx, cy + 42);
 
     ctx.restore();
-  }
-
-  #drawDisconnected(ctx, cx, cy, radius) {
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 10;
-    ctx.stroke();
-
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = 'bold 16px system-ui, sans-serif';
-    ctx.fillStyle = '#64748b';
-    ctx.fillText('Session Disconnected', cx, cy - 10);
-
-    ctx.font = '13px system-ui, sans-serif';
-    ctx.fillStyle = '#475569';
-    ctx.fillText('Click Connect to Start', cx, cy + 16);
   }
 }

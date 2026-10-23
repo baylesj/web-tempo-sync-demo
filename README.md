@@ -20,6 +20,7 @@ To run the automated tests:
 
 ```bash
 node test/test-fake-session.js
+node test/test-midi-clock.js
 python3 test/test_http_serve.py
 ```
 
@@ -31,7 +32,7 @@ To test with the native browser implementation, launch Chromium with the `TempoS
 out/Default/chrome --enable-blink-features=TempoSync http://localhost:8000
 ```
 
-When native support is active, the status badge in the top right shows "Native API". The peer count reflects actual Ableton Link peers detected on your local network.
+When native support is active, the session section shows `navigator.tempoSync` as the API. The peer count reflects actual Ableton Link peers detected on your local network.
 
 ## Features
 
@@ -51,13 +52,23 @@ A canvas visualizer driven by `requestAnimationFrame`. It calls `session.capture
 ### 16-Step Sampler
 A 4-track by 16-step drum machine (Kick, Snare, Hi-Hat, Clap):
 - **Web Audio Synthesis**: All sounds are synthesized with Web Audio nodes (oscillators, filtered noise bursts, and gain envelopes). No audio files are needed to start.
-- **Sample Loading**: Each track includes a `SMP` button that accepts WAV/MP3 files and decodes them into an `AudioBuffer`. This demonstrates the first step toward interactive sampling features for web music education sites.
+- **Sample Loading**: Each track includes a `sample` button that accepts WAV/MP3 files and decodes them into an `AudioBuffer`. This demonstrates the first step toward interactive sampling features for web music education sites.
 - **Presets**: Includes built-in patterns ("Four on the Floor", "Breakbeat", "Syncopated", and "Clear All").
 - **Track Controls**: Independent mute and solo toggles for each track.
 - **Lookahead Scheduler**: Runs a `setInterval` at 25 ms that looks ahead 100 ms into `audioContext.currentTime`. On each tick, it calls `session.captureState(audioContext)` to obtain a fresh timeline snapshot in audio context seconds. For each 16th-note beat boundary in the window, it calculates `state.timeAtBeat(beat, quantum)` and schedules sound events at that exact context time. It never caches absolute timestamps across ticks, so tempo changes and timeline shifts take effect immediately.
 
+### Metronome
+The `metronome` switch under the session controls clicks on every beat while the session plays, higher on beat 0 of the quantum, with its own volume. Clicks are scheduled by the same lookahead loop as the pattern, from `timeAtBeat`, so they follow tempo changes and start on the quantum boundary. The switch and volume are kept in `localStorage`.
+
+### MIDI
+`Connect MIDI` calls `navigator.requestMIDIAccess()` (no sysex), lists inputs, picks one whose name contains "Move" (an Ableton Move over USB) and follows hot-plugging. Browsers without WebMIDI, or pages served over plain http, get a note and the rest of the page keeps working.
+
+- **Clock follow** (the `follow clock` switch, on by default): `js/midi-clock.js` fits a line through the last 96 clock ticks (4 beats at 24 PPQN), drops ticks that sit far off it, and only reports a tempo once the older and newer halves of the window agree within 1%. A steady tempo goes through the same path as the tempo slider, rounded to 0.1 BPM. Start and Continue start the session and Stop stops it, quantized like the Play button.
+- **Notes**: a note on plays a pattern row right away, with velocity. The row is the note number modulo 4, unless a row's `learn` button was pressed before the note, which maps that note to that row (kept in `localStorage`).
+- **Monitor**: the last 12 messages; runs of clock ticks collapse into one line with a count. Transport messages, clock lock and loss, and notes (at most four lines a second) go to the event log.
+
 ### Latency Measurement Mode
-Turn on the "Latency Measurement Mode" toggle to emit metronome clicks on every beat, with an accented pitch on beat 0 of each quantum.
+Turn on the `measure output latency` switch to play full-volume clicks on every beat, with an accented pitch on beat 0 of each quantum. It shares the metronome's scheduling.
 
 To measure latency:
 1. Route the browser audio output and Ableton Live's metronome into separate tracks of a DAW (or audio recorder).

@@ -196,7 +196,7 @@ export class Track {
   }
 
   play(time, velocity = 1.0) {
-    if (this.muted) {
+    if (this.muted || !this.audioContext) {
       return;
     }
     if (this.audioBuffer) {
@@ -227,11 +227,20 @@ export class AudioEngine {
   #session = null;
   #schedulerTimer = null;
   #latencyMode = false;
+  #metronome = false;
+  #metronomeVolume = 0.6;
   #nextBeatToSchedule = null;
   #onStepCallback = null;
 
   constructor() {
-    // AudioContext is created on first user gesture
+    // Tracks exist from the start so the pattern grid can be built; the AudioContext is created on the
+    // first user gesture (Connect, or Connect MIDI) and handed to them then.
+    this.#tracks = [
+      new Track('Kick', 'kick', null, null),
+      new Track('Snare', 'snare', null, null),
+      new Track('Hi-hat', 'hat', null, null),
+      new Track('Clap', 'clap', null, null),
+    ];
   }
 
   get audioContext() {
@@ -248,6 +257,23 @@ export class AudioEngine {
 
   set latencyMode(val) {
     this.#latencyMode = Boolean(val);
+  }
+
+  // The beat click for playing along. Shares its scheduling with latency mode.
+  get metronome() {
+    return this.#metronome;
+  }
+
+  set metronome(val) {
+    this.#metronome = Boolean(val);
+  }
+
+  get metronomeVolume() {
+    return this.#metronomeVolume;
+  }
+
+  set metronomeVolume(val) {
+    this.#metronomeVolume = Math.max(0, Math.min(1, Number(val) || 0));
   }
 
   get baseLatencyMs() {
@@ -270,20 +296,37 @@ export class AudioEngine {
 
   init(session) {
     this.#session = session;
+    this.ensureContext();
+  }
+
+  // Creates the AudioContext if needed. Call from a user gesture.
+  ensureContext() {
     if (!this.#audioContext) {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       this.#audioContext = new AudioCtx({ latencyHint: 'interactive' });
       this.#masterGain = this.#audioContext.createGain();
       this.#masterGain.gain.setValueAtTime(0.85, this.#audioContext.currentTime);
       this.#masterGain.connect(this.#audioContext.destination);
-
-      this.#tracks = [
-        new Track('Kick', 'kick', this.#audioContext, this.#masterGain),
-        new Track('Snare', 'snare', this.#audioContext, this.#masterGain),
-        new Track('Hi-Hat', 'hat', this.#audioContext, this.#masterGain),
-        new Track('Clap', 'clap', this.#audioContext, this.#masterGain),
-      ];
+      for (const track of this.#tracks) {
+        track.audioContext = this.#audioContext;
+        track.masterGain = this.#masterGain;
+      }
     }
+    return this.#audioContext;
+  }
+
+  // Plays a track now (a MIDI note), honouring mute and solo. velocity is 0-1.
+  trigger(trackIndex, velocity = 1.0) {
+    const track = this.#tracks[trackIndex];
+    if (!track || !this.#audioContext) {
+      return false;
+    }
+    const hasSolo = this.#tracks.some((t) => t.soloed);
+    if (track.muted || (hasSolo && !track.soloed)) {
+      return false;
+    }
+    track.play(this.#audioContext.currentTime, velocity);
+    return true;
   }
 
   setSession(session) {
@@ -375,13 +418,17 @@ export class AudioEngine {
           }
         }
 
-        // Latency measurement mode: click on every integer beat
-        if (this.#latencyMode) {
+        // Click on every whole beat, accented on beat 0 of the quantum: the metronome, or latency mode
+        // (always full volume, so the recording has a clear transient to measure).
+        if (this.#latencyMode || this.#metronome) {
           const isIntegerBeat = Math.abs(this.#nextBeatToSchedule - Math.round(this.#nextBeatToSchedule)) < 1e-4;
           if (isIntegerBeat) {
             const beatInt = Math.round(this.#nextBeatToSchedule);
             const isDownbeat = ((beatInt % quantum) + quantum) % quantum === 0;
-            SynthVoices.click(this.#audioContext, this.#masterGain, beatTime, isDownbeat, 1.0);
+            const volume = this.#latencyMode ? 1.0 : this.#metronomeVolume;
+            if (volume > 0) {
+              SynthVoices.click(this.#audioContext, this.#masterGain, beatTime, isDownbeat, volume);
+            }
           }
         }
       }

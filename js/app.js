@@ -1,9 +1,34 @@
-// Main application controller for Web Tempo Sync demo.
+// Page controller: session, transport, pattern, MIDI, latency mode and the event log.
 
 import { requestTempoSession } from './fake-session.js';
 import { AudioEngine } from './audio.js';
 import { BeatRing } from './beat-ring.js';
 import { SamplerUI } from './sampler-ui.js';
+import { MidiInput } from './midi-input.js';
+import { noteName } from './midi-clock.js';
+
+const STORE_PREFIX = 'tempo-sync-demo.';
+const TEMPO_MIN = 60;
+const TEMPO_MAX = 200;
+
+// localStorage that never throws (private mode, blocked storage).
+const store = {
+  get(key, fallback = null) {
+    try {
+      const raw = localStorage.getItem(STORE_PREFIX + key);
+      return raw === null ? fallback : JSON.parse(raw);
+    } catch {
+      return fallback;
+    }
+  },
+  set(key, value) {
+    try {
+      localStorage.setItem(STORE_PREFIX + key, JSON.stringify(value));
+    } catch {
+      /* storage blocked: the setting lasts until reload */
+    }
+  },
+};
 
 class App {
   #session = null;
@@ -11,114 +36,231 @@ class App {
   #audioEngine = new AudioEngine();
   #beatRing = null;
   #samplerUI = null;
-  #animId = null;
-
-  // DOM Elements
-  #elements = {};
+  #midi = null;
+  #noteMap = {}; // learned MIDI note -> track index
+  #learnTrack = null;
+  #lastClockCommit = 0;
+  #el = {};
 
   constructor() {
-    this.#cacheElements();
-    this.#initUI();
-  }
-
-  #cacheElements() {
-    this.#elements = {
-      connectBtn: document.getElementById('connect-btn'),
-      statusBadge: document.getElementById('status-badge'),
-      peerCount: document.getElementById('peer-count'),
-      tempoSlider: document.getElementById('tempo-slider'),
-      tempoInput: document.getElementById('tempo-input'),
-      playStopBtn: document.getElementById('play-stop-btn'),
-      quantumSelect: document.getElementById('quantum-select'),
-      beatRingCanvas: document.getElementById('beat-ring-canvas'),
-      samplerContainer: document.getElementById('sampler-container'),
-      latencyToggle: document.getElementById('latency-toggle'),
-      latencyInfo: document.getElementById('latency-info'),
-      baseLatencyVal: document.getElementById('base-latency-val'),
-      outputLatencyVal: document.getElementById('output-latency-val'),
-      sampleRateVal: document.getElementById('sample-rate-val'),
-      eventLog: document.getElementById('event-log'),
-      clearLogBtn: document.getElementById('clear-log-btn'),
+    const $ = (id) => document.getElementById(id);
+    this.#el = {
+      connectBtn: $('connect-btn'),
+      statusDot: $('status-dot'),
+      statusText: $('status-text'),
+      apiText: $('api-text'),
+      peerCount: $('peer-count'),
+      tempoSlider: $('tempo-slider'),
+      tempoInput: $('tempo-input'),
+      playStopBtn: $('play-stop-btn'),
+      quantumSelect: $('quantum-select'),
+      metronomeToggle: $('metronome-toggle'),
+      metronomeVolume: $('metronome-volume'),
+      beatRingCanvas: $('beat-ring-canvas'),
+      samplerContainer: $('sampler-container'),
+      latencyToggle: $('latency-toggle'),
+      baseLatencyVal: $('base-latency-val'),
+      outputLatencyVal: $('output-latency-val'),
+      sampleRateVal: $('sample-rate-val'),
+      eventLog: $('event-log'),
+      clearLogBtn: $('clear-log-btn'),
     };
+    this.#initUI();
+    this.#initMidi();
   }
 
   #initUI() {
-    this.#beatRing = new BeatRing(this.#elements.beatRingCanvas);
-    this.#samplerUI = new SamplerUI(this.#elements.samplerContainer, this.#audioEngine);
+    const el = this.#el;
+    this.#beatRing = new BeatRing(el.beatRingCanvas);
+    this.#samplerUI = new SamplerUI(el.samplerContainer, this.#audioEngine);
     this.#samplerUI.buildUI();
 
-    this.#elements.connectBtn.addEventListener('click', () => this.#toggleConnect());
-    this.#elements.tempoSlider.addEventListener('input', (e) => this.#onTempoInput(Number(e.target.value)));
-    this.#elements.tempoInput.addEventListener('change', (e) => this.#onTempoInput(Number(e.target.value)));
-    this.#elements.playStopBtn.addEventListener('click', () => this.#togglePlayStop());
-    this.#elements.quantumSelect.addEventListener('change', () => this.#onQuantumChange());
-    this.#elements.latencyToggle.addEventListener('change', (e) => this.#toggleLatencyMode(e.target.checked));
-    this.#elements.clearLogBtn.addEventListener('click', () => this.#clearLog());
+    el.connectBtn.addEventListener('click', () => this.#toggleConnect());
+    el.tempoSlider.addEventListener('input', (e) => this.#onTempoInput(Number(e.target.value)));
+    el.tempoInput.addEventListener('change', (e) => this.#onTempoInput(Number(e.target.value)));
+    el.playStopBtn.addEventListener('click', () => this.#requestPlaying(!this.#isPlaying()));
+    el.quantumSelect.addEventListener('change', () => this.#onQuantumChange());
+    el.latencyToggle.addEventListener('change', (e) => this.#toggleLatencyMode(e.target.checked));
+    el.clearLogBtn.addEventListener('click', () => el.eventLog.replaceChildren());
 
-    this.#startVisualLoop();
-    this.#log('Ready. Click Connect to start audio and join session.', 'INFO');
+    // Metronome: remembered per browser.
+    el.metronomeToggle.checked = Boolean(store.get('metronome', false));
+    el.metronomeVolume.value = String(store.get('metronomeVolume', 0.6));
+    this.#audioEngine.metronome = el.metronomeToggle.checked;
+    this.#audioEngine.metronomeVolume = Number(el.metronomeVolume.value);
+    el.metronomeToggle.addEventListener('change', () => {
+      this.#audioEngine.metronome = el.metronomeToggle.checked;
+      store.set('metronome', el.metronomeToggle.checked);
+      this.#log(`Metronome ${el.metronomeToggle.checked ? 'on' : 'off'}`, 'INFO');
+    });
+    el.metronomeVolume.addEventListener('input', () => {
+      this.#audioEngine.metronomeVolume = Number(el.metronomeVolume.value);
+      store.set('metronomeVolume', Number(el.metronomeVolume.value));
+    });
+
+    const loop = () => {
+      this.#samplerUI.updatePlayhead();
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+    this.#log('Press Connect to start audio and join the session.', 'INFO');
   }
+
+  // --- MIDI ---
+
+  #initMidi() {
+    const saved = store.get('noteMap', {});
+    this.#noteMap = saved && typeof saved === 'object' ? saved : {};
+    this.#renderNoteLabels();
+    this.#samplerUI.onLearn = (track) => this.#setLearn(track);
+
+    const $ = (id) => document.getElementById(id);
+    this.#midi = new MidiInput(
+      {
+        connectBtn: $('midi-connect-btn'),
+        select: $('midi-input-select'),
+        follow: $('midi-follow'),
+        status: $('midi-status'),
+        clockBpm: $('midi-clock-bpm'),
+        clockDot: $('midi-clock-dot'),
+        transport: $('midi-transport'),
+        monitor: $('midi-monitor'),
+      },
+      {
+        onConnect: () => {
+          // Connect MIDI is a click, so audio may start here: pads play before a session exists.
+          this.#audioEngine.ensureContext();
+          this.#audioEngine.resume();
+        },
+        onClockTempo: (bpm) => this.#followClockTempo(bpm),
+        onTransport: (kind) => this.#followClockTransport(kind),
+        onNote: (note, velocity) => this.#onNote(note, velocity),
+        log: (msg, tag) => this.#log(msg, tag),
+      }
+    );
+  }
+
+  #followClockTempo(bpm) {
+    if (!this.#session) {
+      return;
+    }
+    const target = Math.max(TEMPO_MIN, Math.min(TEMPO_MAX, Math.round(bpm * 10) / 10));
+    const current = this.#session.captureState().tempo;
+    const now = performance.now();
+    // Only move the session for a real change, and not more than a few times a second.
+    if (Math.abs(target - current) < 0.1 - 1e-6 || now - this.#lastClockCommit < 200) {
+      return;
+    }
+    this.#lastClockCommit = now;
+    this.#onTempoInput(target);
+  }
+
+  #followClockTransport(kind) {
+    if (!this.#session) {
+      this.#log(`Ignored ${kind}: connect the session first`, 'MIDI');
+      return;
+    }
+    const play = kind !== 'stop';
+    if (play !== this.#isPlaying()) {
+      this.#requestPlaying(play);
+    }
+  }
+
+  #trackForNote(note) {
+    const learned = this.#noteMap[note];
+    if (Number.isInteger(learned) && learned >= 0 && learned < this.#samplerUI.trackCount) {
+      return learned;
+    }
+    return note % this.#samplerUI.trackCount;
+  }
+
+  #onNote(note, velocity) {
+    if (this.#learnTrack !== null) {
+      const track = this.#learnTrack;
+      for (const [n, t] of Object.entries(this.#noteMap)) {
+        if (t === track) {
+          delete this.#noteMap[n];
+        }
+      }
+      this.#noteMap[note] = track;
+      store.set('noteMap', this.#noteMap);
+      this.#renderNoteLabels();
+      this.#log(`Note ${note} (${noteName(note)}) now plays ${this.#audioEngine.tracks[track].name}`, 'MIDI');
+      this.#setLearn(null);
+    }
+    const track = this.#trackForNote(note);
+    if (this.#audioEngine.trigger(track, velocity / 127)) {
+      this.#samplerUI.flash(track);
+    }
+  }
+
+  #setLearn(track) {
+    this.#learnTrack = track;
+    this.#samplerUI.setLearning(track);
+  }
+
+  #renderNoteLabels() {
+    this.#audioEngine.tracks.forEach((_, t) => {
+      const note = Object.keys(this.#noteMap).find((n) => this.#noteMap[n] === t);
+      this.#samplerUI.setNoteLabel(t, note === undefined ? '' : `note ${note}`);
+    });
+  }
+
+  // --- Session ---
 
   async #toggleConnect() {
     if (this.#session) {
       this.#disconnect();
       return;
     }
-
+    const el = this.#el;
     try {
-      this.#elements.connectBtn.disabled = true;
-      this.#elements.connectBtn.textContent = 'Connecting...';
+      el.connectBtn.disabled = true;
+      el.connectBtn.textContent = 'Connecting…';
 
-      const quantum = Number(this.#elements.quantumSelect.value) || 4;
-      const { session, isNative } = await requestTempoSession({
-        quantum,
-        startStopSync: true,
-      });
-
+      const quantum = Number(el.quantumSelect.value) || 4;
+      const { session, isNative } = await requestTempoSession({ quantum, startStopSync: true });
       this.#session = session;
       this.#isNative = isNative;
 
-      // Initialize audio engine
-      this.#audioEngine.init(this.#session);
+      this.#audioEngine.init(session);
       await this.#audioEngine.resume();
       this.#audioEngine.startScheduler();
 
-      // Connect sub-components
-      this.#beatRing.setSession(this.#session);
+      this.#beatRing.setSession(session);
       this.#beatRing.start();
-      this.#samplerUI.setSession(this.#session);
+      this.#samplerUI.setSession(session);
 
-      // Register session listeners
-      this.#session.addEventListener('numpeerschange', () => this.#onPeersChange());
-      this.#session.addEventListener('tempochange', (e) => this.#onTempoChange(e));
-      this.#session.addEventListener('playingchange', (e) => this.#onPlayingChange(e));
+      session.addEventListener('numpeerschange', () => this.#onPeersChange());
+      session.addEventListener('tempochange', () => this.#onTempoChange());
+      session.addEventListener('playingchange', () => this.#onPlayingChange());
 
-      // Update UI elements
-      this.#elements.connectBtn.disabled = false;
-      this.#elements.connectBtn.textContent = 'Disconnect';
-      this.#elements.connectBtn.classList.add('btn-connected');
+      el.connectBtn.disabled = false;
+      el.connectBtn.textContent = 'Disconnect';
+      el.connectBtn.classList.add('quiet');
+      el.playStopBtn.disabled = false;
+      el.playStopBtn.classList.remove('quiet');
+      el.statusDot.className = 'dot ok';
+      el.statusText.textContent = 'Connected';
+      el.apiText.textContent = isNative ? 'navigator.tempoSync' : 'stand-in (BroadcastChannel)';
+      el.peerCount.textContent = String(session.numPeers);
 
-      this.#elements.statusBadge.textContent = isNative ? 'Native API' : 'Fake Session Fallback';
-      this.#elements.statusBadge.className = `status-badge ${isNative ? 'badge-native' : 'badge-fake'}`;
-
-      this.#elements.peerCount.textContent = String(this.#session.numPeers);
-
-      // Read initial state
-      const state = this.#session.captureState();
+      const state = session.captureState();
       this.#syncTempoUI(state.tempo);
       this.#syncPlayStateUI(state.isPlaying);
-
       this.#updateLatencyInfo();
 
       this.#log(
-        `Session connected (${isNative ? 'navigator.tempoSync native' : 'fake-session fallback'}). Peer count: ${this.#session.numPeers}`,
+        `Joined the session through ${isNative ? 'navigator.tempoSync' : 'the stand-in'}, ${session.numPeers} peers`,
         'SESSION'
       );
     } catch (err) {
-      console.error('Failed to request tempo session:', err);
-      this.#elements.connectBtn.disabled = false;
-      this.#elements.connectBtn.textContent = 'Connect';
-      this.#log(`Connection error: ${err.message}`, 'ERROR');
+      console.error('Could not join the tempo session:', err);
+      el.connectBtn.disabled = false;
+      el.connectBtn.textContent = 'Connect';
+      el.statusDot.className = 'dot err';
+      el.statusText.textContent = "Couldn't connect";
+      this.#log(`Couldn't join the session: ${err.message}`, 'ERROR');
     }
   }
 
@@ -126,21 +268,24 @@ class App {
     if (!this.#session) {
       return;
     }
-
+    const el = this.#el;
     this.#session.close();
     this.#session = null;
     this.#audioEngine.stopScheduler();
+    this.#beatRing.stop();
     this.#beatRing.setSession(null);
     this.#samplerUI.setSession(null);
 
-    this.#elements.connectBtn.textContent = 'Connect';
-    this.#elements.connectBtn.classList.remove('btn-connected');
-    this.#elements.statusBadge.textContent = 'Disconnected';
-    this.#elements.statusBadge.className = 'status-badge badge-disconnected';
-    this.#elements.peerCount.textContent = '0';
+    el.connectBtn.textContent = 'Connect';
+    el.connectBtn.classList.remove('quiet');
+    el.playStopBtn.disabled = true;
+    el.playStopBtn.classList.add('quiet');
+    el.statusDot.className = 'dot';
+    el.statusText.textContent = 'Not connected';
+    el.apiText.textContent = '–';
+    el.peerCount.textContent = '0';
     this.#syncPlayStateUI(false);
-
-    this.#log('Session disconnected.', 'SESSION');
+    this.#log('Left the session', 'SESSION');
   }
 
   #onPeersChange() {
@@ -148,153 +293,125 @@ class App {
       return;
     }
     const count = this.#session.numPeers;
-    this.#elements.peerCount.textContent = String(count);
-    this.#log(`Peer count changed: ${count} peer(s) connected`, 'PEERS');
+    this.#el.peerCount.textContent = String(count);
+    this.#log(`${count} ${count === 1 ? 'peer' : 'peers'}`, 'PEERS');
   }
 
-  #onTempoChange(e) {
+  #onTempoChange() {
     if (!this.#session) {
       return;
     }
-    const state = this.#session.captureState();
-    this.#syncTempoUI(state.tempo);
-    this.#log(`Tempo changed: ${state.tempo.toFixed(2)} BPM`, 'TEMPO');
+    const { tempo } = this.#session.captureState();
+    this.#syncTempoUI(tempo);
+    this.#log(`Tempo ${tempo.toFixed(2)} bpm`, 'TEMPO');
   }
 
-  #onPlayingChange(e) {
+  #onPlayingChange() {
     if (!this.#session) {
       return;
     }
-    const state = this.#session.captureState();
-    this.#syncPlayStateUI(state.isPlaying);
-    this.#log(`Play state changed: isPlaying = ${state.isPlaying}`, 'PLAYING');
+    const { isPlaying } = this.#session.captureState();
+    this.#syncPlayStateUI(isPlaying);
+    this.#log(isPlaying ? 'Playing' : 'Stopped', 'PLAYING');
   }
 
+  // The one path for tempo changes: the slider, the number field and MIDI clock all come through here.
   #onTempoInput(bpm) {
+    const clamped = Math.max(TEMPO_MIN, Math.min(TEMPO_MAX, bpm));
+    this.#syncTempoUI(clamped);
     if (!this.#session) {
-      this.#syncTempoUI(bpm);
       return;
     }
-    const clampedBpm = Math.max(60, Math.min(200, bpm));
-    this.#syncTempoUI(clampedBpm);
-
     const ctx = this.#audioEngine.audioContext;
     const state = this.#session.captureState(ctx || null);
     const t = ctx ? ctx.currentTime : performance.now() / 1000;
-    state.setTempo(clampedBpm, t);
+    state.setTempo(clamped, t);
     this.#session.commitState(state);
   }
 
   #syncTempoUI(bpm) {
     const rounded = Math.round(bpm * 10) / 10;
-    this.#elements.tempoSlider.value = rounded;
-    this.#elements.tempoInput.value = rounded.toFixed(1);
+    this.#el.tempoSlider.value = rounded;
+    this.#el.tempoInput.value = rounded.toFixed(1);
   }
 
-  #togglePlayStop() {
+  #isPlaying() {
+    return Boolean(this.#session?.captureState().isPlaying);
+  }
+
+  // The one path for play/stop: the button and MIDI start/stop. Commits at the next quantum boundary.
+  #requestPlaying(willPlay) {
     if (!this.#session) {
       return;
     }
-
     const ctx = this.#audioEngine.audioContext;
     const state = this.#session.captureState(ctx || null);
     const t = ctx ? ctx.currentTime : performance.now() / 1000;
     const quantum = this.#session.quantum || 4;
 
-    const currentBeat = state.beatAtTime(t, quantum);
-    // Quantize to the next multiple of quantum
-    const nextQuantumBeat = Math.floor(currentBeat / quantum + 1) * quantum;
-    const quantizedTime = state.timeAtBeat(nextQuantumBeat, quantum);
-
-    const willPlay = !state.isPlaying;
-    state.setIsPlaying(willPlay, quantizedTime);
+    const nextBar = Math.floor(state.beatAtTime(t, quantum) / quantum + 1) * quantum;
+    const at = state.timeAtBeat(nextBar, quantum);
+    state.setIsPlaying(willPlay, at);
     this.#session.commitState(state);
-
-    this.#log(
-      `Requested ${willPlay ? 'PLAY' : 'STOP'} at quantized beat ${nextQuantumBeat} (time ${quantizedTime.toFixed(3)}s)`,
-      'PLAYING'
-    );
+    this.#log(`${willPlay ? 'Play' : 'Stop'} at beat ${nextBar}, in ${(at - t).toFixed(2)} s`, 'PLAYING');
   }
 
   #syncPlayStateUI(isPlaying) {
-    if (isPlaying) {
-      this.#elements.playStopBtn.textContent = 'Stop';
-      this.#elements.playStopBtn.classList.add('btn-playing');
-    } else {
-      this.#elements.playStopBtn.textContent = 'Play';
-      this.#elements.playStopBtn.classList.remove('btn-playing');
-    }
+    this.#el.playStopBtn.textContent = isPlaying ? 'Stop' : 'Play';
   }
 
   async #onQuantumChange() {
     if (!this.#session) {
       return;
     }
-    // Reconnect session with new quantum
-    this.#log(`Changing quantum to ${this.#elements.quantumSelect.value}...`, 'INFO');
+    this.#log(`Quantum ${this.#el.quantumSelect.value}, rejoining`, 'INFO');
     this.#disconnect();
     await this.#toggleConnect();
   }
 
   #toggleLatencyMode(enabled) {
     this.#audioEngine.latencyMode = enabled;
-    this.#log(`Latency measurement metronome ${enabled ? 'ENABLED' : 'DISABLED'}`, 'INFO');
+    this.#log(`Latency clicks ${enabled ? 'on' : 'off'}`, 'INFO');
     this.#updateLatencyInfo();
   }
 
   #updateLatencyInfo() {
-    const baseMs = this.#audioEngine.baseLatencyMs;
-    const outMs = this.#audioEngine.outputLatencyMs;
+    const ms = (v) => (v !== null ? `${v.toFixed(2)} ms` : '–');
     const sr = this.#audioEngine.sampleRate;
-
-    this.#elements.baseLatencyVal.textContent = baseMs !== null ? `${baseMs.toFixed(2)} ms` : 'N/A';
-    this.#elements.outputLatencyVal.textContent = outMs !== null ? `${outMs.toFixed(2)} ms` : 'N/A';
-    this.#elements.sampleRateVal.textContent = sr !== null ? `${sr} Hz` : 'N/A';
-  }
-
-  #startVisualLoop() {
-    const loop = () => {
-      if (this.#samplerUI) {
-        this.#samplerUI.updatePlayhead();
-      }
-      this.#animId = requestAnimationFrame(loop);
-    };
-    this.#animId = requestAnimationFrame(loop);
+    this.#el.baseLatencyVal.textContent = ms(this.#audioEngine.baseLatencyMs);
+    this.#el.outputLatencyVal.textContent = ms(this.#audioEngine.outputLatencyMs);
+    this.#el.sampleRateVal.textContent = sr !== null ? `${sr} Hz` : '–';
   }
 
   #log(message, tag = 'INFO') {
     const now = new Date();
-    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}.${String(now.getMilliseconds()).padStart(3, '0')}`;
-
-    const item = document.createElement('div');
-    item.className = `log-entry log-${tag.toLowerCase()}`;
-
-    const timeSpan = document.createElement('span');
-    timeSpan.className = 'log-time';
-    timeSpan.textContent = timeStr;
-
+    const pad = (n, w = 2) => String(n).padStart(w, '0');
+    const item = document.createElement('li');
+    if (tag === 'ERROR') {
+      item.className = 'err';
+    }
+    const time = document.createElement('span');
+    time.className = 't';
+    time.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}.${pad(now.getMilliseconds(), 3)}`;
     const tagSpan = document.createElement('span');
-    tagSpan.className = `log-tag tag-${tag.toLowerCase()}`;
-    tagSpan.textContent = `[${tag}]`;
+    tagSpan.className = 'tag';
+    tagSpan.textContent = tag.toLowerCase();
+    const msg = document.createElement('span');
+    msg.textContent = message;
+    item.append(time, tagSpan, msg);
 
-    const msgSpan = document.createElement('span');
-    msgSpan.className = 'log-msg';
-    msgSpan.textContent = message;
-
-    item.appendChild(timeSpan);
-    item.appendChild(tagSpan);
-    item.appendChild(msgSpan);
-
-    this.#elements.eventLog.appendChild(item);
-    this.#elements.eventLog.scrollTop = this.#elements.eventLog.scrollHeight;
-  }
-
-  #clearLog() {
-    this.#elements.eventLog.innerHTML = '';
+    const log = this.#el.eventLog;
+    const atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight - 4;
+    log.appendChild(item);
+    while (log.childElementCount > 500) {
+      log.firstElementChild.remove();
+    }
+    if (atBottom) {
+      log.scrollTop = log.scrollHeight;
+    }
   }
 }
 
-// Bootstrap application on DOMContentLoaded
 window.addEventListener('DOMContentLoaded', () => {
   new App();
   if (new URLSearchParams(window.location.search).get('autoconnect') === '1') {

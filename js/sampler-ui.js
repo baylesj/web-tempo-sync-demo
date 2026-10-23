@@ -1,16 +1,19 @@
-// UI component for the 4-track x 16-step pattern sampler.
+// The 4-track x 16-step pattern grid.
 
 export class SamplerUI {
   #container;
   #audioEngine;
   #session = null;
-  #stepButtons = []; // 2D array [trackIndex][stepIndex]
-  #headerPlayheads = [];
+  #stepButtons = []; // [trackIndex][stepIndex]
+  #headerCells = [];
+  #rows = []; // per track: { row, learnBtn, noteLabel }
+  #presetButtons = new Map();
   #lastPlayheadStep = -1;
+  #onLearn = null;
 
   static PRESETS = {
     fourOnTheFloor: {
-      name: 'Four on the Floor',
+      name: 'four on the floor',
       patterns: [
         [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], // Kick
         [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], // Snare
@@ -19,21 +22,21 @@ export class SamplerUI {
       ],
     },
     breakbeat: {
-      name: 'Breakbeat',
+      name: 'breakbeat',
       patterns: [
-        [1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0], // Kick
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], // Snare
-        [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0], // Hat
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], // Clap
+        [1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+        [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
       ],
     },
     syncopated: {
-      name: 'Syncopated',
+      name: 'syncopated',
       patterns: [
-        [1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0], // Kick
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1], // Snare
-        [1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1], // Hat
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0], // Clap
+        [1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+        [1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1],
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0],
       ],
     },
   };
@@ -45,179 +48,139 @@ export class SamplerUI {
 
   setSession(session) {
     this.#session = session;
+    if (!session && this.#lastPlayheadStep !== -1) {
+      this.#setPlayhead(this.#lastPlayheadStep, false);
+      this.#lastPlayheadStep = -1;
+    }
+  }
+
+  // Called with a track index when its learn button is pressed (or null to cancel).
+  set onLearn(fn) {
+    this.#onLearn = fn;
+  }
+
+  get trackCount() {
+    return this.#audioEngine.tracks.length;
   }
 
   buildUI() {
-    this.#container.innerHTML = '';
+    this.#container.replaceChildren();
     const tracks = this.#audioEngine.tracks;
 
-    const wrapper = document.createElement('div');
-    wrapper.className = 'sampler-wrapper';
-
-    // Toolbar (Preset buttons, Clear)
-    const toolbar = document.createElement('div');
-    toolbar.className = 'sampler-toolbar';
-
-    const presetLabel = document.createElement('span');
-    presetLabel.className = 'toolbar-label';
-    presetLabel.textContent = 'Patterns:';
-    toolbar.appendChild(presetLabel);
-
+    const tools = el('div', 'pattern-tools');
+    const presets = el('div', 'seg');
+    presets.setAttribute('role', 'group');
+    presets.setAttribute('aria-label', 'Patterns');
     for (const [key, preset] of Object.entries(SamplerUI.PRESETS)) {
-      const btn = document.createElement('button');
+      const btn = el('button', '', preset.name);
       btn.type = 'button';
-      btn.className = 'btn-preset';
-      btn.textContent = preset.name;
       btn.addEventListener('click', () => this.applyPreset(key));
-      toolbar.appendChild(btn);
+      presets.appendChild(btn);
+      this.#presetButtons.set(key, btn);
     }
-
-    const clearBtn = document.createElement('button');
+    const clearBtn = el('button', '', 'clear');
     clearBtn.type = 'button';
-    clearBtn.className = 'btn-preset btn-clear';
-    clearBtn.textContent = 'Clear All';
     clearBtn.addEventListener('click', () => this.clearAll());
-    toolbar.appendChild(clearBtn);
+    presets.appendChild(clearBtn);
+    tools.appendChild(presets);
+    this.#container.appendChild(tools);
 
-    wrapper.appendChild(toolbar);
+    const grid = el('div', 'pattern');
 
-    // Grid container
-    const grid = document.createElement('div');
-    grid.className = 'sampler-grid';
-
-    // Step indicators header row (1 to 16, grouped in 4s)
-    const headerRow = document.createElement('div');
-    headerRow.className = 'sampler-row sampler-header-row';
-
-    const cornerCell = document.createElement('div');
-    cornerCell.className = 'track-meta-cell';
-    cornerCell.textContent = 'TRACK';
-    headerRow.appendChild(cornerCell);
-
-    const stepsHeader = document.createElement('div');
-    stepsHeader.className = 'track-steps-header';
-
-    this.#headerPlayheads = [];
+    // Header: beat numbers over the first step of each beat.
+    const header = el('div', 'pattern-row pattern-head');
+    header.appendChild(el('span', 'track'));
+    const headSteps = el('div', 'steps');
+    headSteps.setAttribute('aria-hidden', 'true');
+    this.#headerCells = [];
     for (let s = 0; s < 16; s++) {
-      const stepHeaderCell = document.createElement('div');
-      const beatNum = Math.floor(s / 4) + 1;
-      const subBeat = (s % 4) + 1;
-      stepHeaderCell.className = `step-header-cell beat-group-${beatNum}`;
-      stepHeaderCell.textContent = subBeat === 1 ? String(beatNum) : '•';
-      if (subBeat === 1) {
-        stepHeaderCell.classList.add('step-downbeat');
-      }
-      stepsHeader.appendChild(stepHeaderCell);
-      this.#headerPlayheads.push(stepHeaderCell);
+      const cell = el('span', s % 4 === 0 ? 'down' : '', s % 4 === 0 ? String(s / 4 + 1) : '');
+      headSteps.appendChild(cell);
+      this.#headerCells.push(cell);
     }
-    headerRow.appendChild(stepsHeader);
-    grid.appendChild(headerRow);
+    header.appendChild(headSteps);
+    grid.appendChild(header);
 
-    // Track rows
     this.#stepButtons = [];
+    this.#rows = [];
     tracks.forEach((track, trackIdx) => {
-      const row = document.createElement('div');
-      row.className = `sampler-row track-row track-${track.voiceKey}`;
+      const row = el('div', 'pattern-row');
+      const meta = el('div', 'track');
+      meta.appendChild(el('span', 'name', track.name));
 
-      // Track meta (name, mute, solo, sample loader)
-      const meta = document.createElement('div');
-      meta.className = 'track-meta-cell';
+      const toggle = (label, title, key) => {
+        const btn = el('button', 'mini', label);
+        btn.type = 'button';
+        btn.title = title;
+        btn.setAttribute('aria-pressed', 'false');
+        btn.addEventListener('click', () => {
+          track[key] = !track[key];
+          btn.setAttribute('aria-pressed', String(track[key]));
+        });
+        return btn;
+      };
+      meta.appendChild(toggle('mute', `Mute ${track.name}`, 'muted'));
+      meta.appendChild(toggle('solo', `Solo ${track.name}`, 'soloed'));
 
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'track-name';
-      nameSpan.textContent = track.name;
-      meta.appendChild(nameSpan);
-
-      const trackControls = document.createElement('div');
-      trackControls.className = 'track-controls';
-
-      const muteBtn = document.createElement('button');
-      muteBtn.type = 'button';
-      muteBtn.className = 'btn-track-ctrl btn-mute';
-      muteBtn.textContent = 'M';
-      muteBtn.title = 'Mute';
-      muteBtn.addEventListener('click', () => {
-        track.muted = !track.muted;
-        muteBtn.classList.toggle('active', track.muted);
-      });
-      trackControls.appendChild(muteBtn);
-
-      const soloBtn = document.createElement('button');
-      soloBtn.type = 'button';
-      soloBtn.className = 'btn-track-ctrl btn-solo';
-      soloBtn.textContent = 'S';
-      soloBtn.title = 'Solo';
-      soloBtn.addEventListener('click', () => {
-        track.soloed = !track.soloed;
-        soloBtn.classList.toggle('active', track.soloed);
-      });
-      trackControls.appendChild(soloBtn);
-
-      // Hidden file input for sample loading
       const fileInput = document.createElement('input');
       fileInput.type = 'file';
       fileInput.accept = 'audio/*';
-      fileInput.style.display = 'none';
-      fileInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (file) {
-          try {
-            const arrayBuffer = await file.arrayBuffer();
-            const audioBuffer = await this.#audioEngine.audioContext.decodeAudioData(arrayBuffer);
-            track.setAudioBuffer(audioBuffer);
-            sampleBtn.classList.add('loaded');
-            sampleBtn.title = `Loaded: ${file.name}`;
-          } catch (err) {
-            console.error('Failed to load sample:', err);
-          }
+      fileInput.hidden = true;
+      const sampleBtn = el('button', 'mini', 'sample');
+      sampleBtn.type = 'button';
+      sampleBtn.title = `Load a WAV or MP3 into ${track.name}`;
+      sampleBtn.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', async () => {
+        const file = fileInput.files[0];
+        if (!file) {
+          return;
+        }
+        try {
+          const ctx = this.#audioEngine.ensureContext();
+          track.setAudioBuffer(await ctx.decodeAudioData(await file.arrayBuffer()));
+          sampleBtn.setAttribute('aria-pressed', 'true');
+          sampleBtn.title = `${track.name}: ${file.name}`;
+        } catch (err) {
+          console.error('Could not load sample:', err);
+          sampleBtn.title = `Couldn't read ${file.name}`;
         }
       });
-
-      const sampleBtn = document.createElement('button');
-      sampleBtn.type = 'button';
-      sampleBtn.className = 'btn-track-ctrl btn-sample';
-      sampleBtn.textContent = 'SMP';
-      sampleBtn.title = 'Load AudioBuffer Sample (WAV/MP3)';
-      sampleBtn.addEventListener('click', () => fileInput.click());
-      trackControls.appendChild(sampleBtn);
-      meta.appendChild(trackControls);
+      meta.appendChild(sampleBtn);
       meta.appendChild(fileInput);
 
+      const learnBtn = el('button', 'mini learn', 'learn');
+      learnBtn.type = 'button';
+      learnBtn.title = `Press, then hit a pad to play ${track.name}`;
+      learnBtn.addEventListener('click', () => {
+        const armed = learnBtn.getAttribute('aria-pressed') === 'true';
+        this.#onLearn?.(armed ? null : trackIdx);
+      });
+      meta.appendChild(learnBtn);
+      const noteLabel = el('span', 'note mono', '');
+      meta.appendChild(noteLabel);
       row.appendChild(meta);
 
-      // 16 step buttons
-      const stepsRow = document.createElement('div');
-      stepsRow.className = 'track-steps-row';
-
-      const trackStepButtons = [];
+      const steps = el('div', 'steps');
+      const buttons = [];
       for (let s = 0; s < 16; s++) {
-        const beatNum = Math.floor(s / 4) + 1;
-        const btn = document.createElement('button');
+        const btn = el('button', s % 4 === 0 ? 'step down' : 'step');
         btn.type = 'button';
-        btn.className = `step-btn beat-group-${beatNum}`;
-        if (s % 4 === 0) {
-          btn.classList.add('downbeat-step');
-        }
         btn.setAttribute('aria-label', `${track.name} step ${s + 1}`);
-
+        btn.setAttribute('aria-pressed', 'false');
         btn.addEventListener('click', () => {
-          const active = track.toggleStep(s);
-          btn.classList.toggle('active', active);
+          btn.setAttribute('aria-pressed', String(track.toggleStep(s)));
+          this.#markPreset(null);
         });
-
-        stepsRow.appendChild(btn);
-        trackStepButtons.push(btn);
+        steps.appendChild(btn);
+        buttons.push(btn);
       }
-
-      this.#stepButtons.push(trackStepButtons);
-      row.appendChild(stepsRow);
+      this.#stepButtons.push(buttons);
+      row.appendChild(steps);
       grid.appendChild(row);
+      this.#rows.push({ row, learnBtn, noteLabel });
     });
 
-    wrapper.appendChild(grid);
-    this.#container.appendChild(wrapper);
-
-    // Apply default preset
+    this.#container.appendChild(grid);
     this.applyPreset('fourOnTheFloor');
   }
 
@@ -226,29 +189,53 @@ export class SamplerUI {
     if (!preset) {
       return;
     }
-    const tracks = this.#audioEngine.tracks;
-    tracks.forEach((track, trackIdx) => {
-      const pattern = preset.patterns[trackIdx] || [];
+    this.#audioEngine.tracks.forEach((track, t) => {
+      const pattern = preset.patterns[t] || [];
       for (let s = 0; s < 16; s++) {
-        const active = Boolean(pattern[s]);
-        track.setStep(s, active);
-        if (this.#stepButtons[trackIdx] && this.#stepButtons[trackIdx][s]) {
-          this.#stepButtons[trackIdx][s].classList.toggle('active', active);
-        }
+        track.setStep(s, Boolean(pattern[s]));
+        this.#stepButtons[t]?.[s]?.setAttribute('aria-pressed', String(Boolean(pattern[s])));
       }
     });
+    this.#markPreset(presetKey);
   }
 
   clearAll() {
-    const tracks = this.#audioEngine.tracks;
-    tracks.forEach((track, trackIdx) => {
+    this.#audioEngine.tracks.forEach((track, t) => {
       track.clearSteps();
-      for (let s = 0; s < 16; s++) {
-        if (this.#stepButtons[trackIdx] && this.#stepButtons[trackIdx][s]) {
-          this.#stepButtons[trackIdx][s].classList.remove('active');
-        }
-      }
+      this.#stepButtons[t]?.forEach((btn) => btn.setAttribute('aria-pressed', 'false'));
     });
+    this.#markPreset(null);
+  }
+
+  #markPreset(key) {
+    for (const [k, btn] of this.#presetButtons) {
+      btn.classList.toggle('on', k === key);
+    }
+  }
+
+  // Shows which track is waiting for a pad (null for none).
+  setLearning(trackIdx) {
+    this.#rows.forEach(({ learnBtn }, i) => learnBtn.setAttribute('aria-pressed', String(i === trackIdx)));
+  }
+
+  // Shows the learned note for a track ('' when it uses the default mapping).
+  setNoteLabel(trackIdx, text) {
+    if (this.#rows[trackIdx]) {
+      this.#rows[trackIdx].noteLabel.textContent = text;
+    }
+  }
+
+  // Briefly marks a track that a MIDI note just played.
+  flash(trackIdx) {
+    const row = this.#rows[trackIdx]?.row;
+    if (!row) {
+      return;
+    }
+    row.classList.remove('hit');
+    void row.offsetWidth; // restart the transition
+    row.classList.add('hit');
+    clearTimeout(row._hitTimer);
+    row._hitTimer = setTimeout(() => row.classList.remove('hit'), 120);
   }
 
   updatePlayhead() {
@@ -256,49 +243,39 @@ export class SamplerUI {
       return;
     }
     const vis = this.#session.captureState();
-    const isStartStopSync = Boolean(this.#session.startStopSync);
-
-    if (isStartStopSync && !vis.isPlaying) {
+    if (this.#session.startStopSync && !vis.isPlaying) {
       if (this.#lastPlayheadStep !== -1) {
-        this.#clearPlayheadHighlight(this.#lastPlayheadStep);
+        this.#setPlayhead(this.#lastPlayheadStep, false);
         this.#lastPlayheadStep = -1;
       }
       return;
     }
-
-    const nowSec = performance.now() / 1000;
-    const beat = vis.beatAtTime(nowSec, this.#session.quantum || 4);
-    // 16th note step index (0 to 15)
-    const currentStep = ((Math.floor(beat * 4.0) % 16) + 16) % 16;
-
-    if (currentStep !== this.#lastPlayheadStep) {
+    const beat = vis.beatAtTime(performance.now() / 1000, this.#session.quantum || 4);
+    const step = ((Math.floor(beat * 4) % 16) + 16) % 16;
+    if (step !== this.#lastPlayheadStep) {
       if (this.#lastPlayheadStep !== -1) {
-        this.#clearPlayheadHighlight(this.#lastPlayheadStep);
+        this.#setPlayhead(this.#lastPlayheadStep, false);
       }
-      this.#setPlayheadHighlight(currentStep);
-      this.#lastPlayheadStep = currentStep;
+      this.#setPlayhead(step, true);
+      this.#lastPlayheadStep = step;
     }
   }
 
-  #setPlayheadHighlight(stepIdx) {
-    if (this.#headerPlayheads[stepIdx]) {
-      this.#headerPlayheads[stepIdx].classList.add('playhead-active');
-    }
-    for (let t = 0; t < this.#stepButtons.length; t++) {
-      if (this.#stepButtons[t][stepIdx]) {
-        this.#stepButtons[t][stepIdx].classList.add('playhead-step');
-      }
+  #setPlayhead(step, on) {
+    this.#headerCells[step]?.classList.toggle('now', on);
+    for (const buttons of this.#stepButtons) {
+      buttons[step]?.classList.toggle('now', on);
     }
   }
+}
 
-  #clearPlayheadHighlight(stepIdx) {
-    if (this.#headerPlayheads[stepIdx]) {
-      this.#headerPlayheads[stepIdx].classList.remove('playhead-active');
-    }
-    for (let t = 0; t < this.#stepButtons.length; t++) {
-      if (this.#stepButtons[t][stepIdx]) {
-        this.#stepButtons[t][stepIdx].classList.remove('playhead-step');
-      }
-    }
+function el(tag, className = '', text = null) {
+  const node = document.createElement(tag);
+  if (className) {
+    node.className = className;
   }
+  if (text !== null) {
+    node.textContent = text;
+  }
+  return node;
 }
