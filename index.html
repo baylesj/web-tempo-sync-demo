@@ -266,8 +266,9 @@ setInterval(scheduleLookahead, 25);</code></pre>
 function toggleQuantizedPlay() {
   const state = session.captureState(audioContext);
   const now = audioContext.currentTime;
-  const nextBar = Math.floor(state.beatAtTime(now, session.quantum) / session.quantum + 1) * session.quantum;
-  const at = state.timeAtBeat(nextBar, session.quantum);
+  const quantum = session.quantum;
+  const nextBar = (Math.floor(state.beatAtTime(now, quantum) / quantum) + 1) * quantum;
+  const at = state.timeAtBeat(nextBar, quantum);
 
   state.setIsPlaying(!state.isPlaying, at);
   session.commitState(state);
