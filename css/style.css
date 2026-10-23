@@ -322,7 +322,8 @@ button.step.now {
   list-style: none;
 }
 
-.monitor {
+/* Room for all 12 lines once messages arrive, so the list doesn't jump as it fills; nothing reserved before. */
+.monitor:not(:empty) {
   min-height: calc(12 * 1.6em);
 }
 
