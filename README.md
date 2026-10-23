@@ -28,10 +28,19 @@ An experiment with WebMIDI input (MIDI clock follow, notes to pattern rows) live
 
 ## Running Against Prototype Chromium
 
-To test with the native browser implementation, launch Chromium with the `TempoSync` blink feature enabled:
+A prebuilt macOS Apple Silicon prototype bundle (`Chromium-tempo-sync-macos-arm64.zip`) is attached to the [`v0.1.0` release](https://github.com/baylesj/tempo-sync-demo/releases/tag/v0.1.0):
+
+- Direct download: [`Chromium-tempo-sync-macos-arm64.zip`](https://github.com/baylesj/tempo-sync-demo/releases/download/v0.1.0/Chromium-tempo-sync-macos-arm64.zip)
+
+After extracting `Chromium.app`, clear the macOS quarantine attribute (since the prototype build is ad-hoc signed) and launch it with the `TempoSync` Blink feature and Rust Link engine enabled:
 
 ```bash
-out/Default/chrome --enable-blink-features=TempoSync http://localhost:8000
+xattr -cr Chromium.app
+./Chromium.app/Contents/MacOS/Chromium \
+  --user-data-dir=/tmp/tempo-sync-profile \
+  --enable-blink-features=TempoSync \
+  --tempo-sync-engine=rust \
+  "http://localhost:8000/?autoconnect=1"
 ```
 
 When native support is active, the session section shows `navigator.tempoSync` as the API. The peer count reflects actual Ableton Link peers detected on your local network.
