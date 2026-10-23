@@ -62,6 +62,7 @@ export class MidiInput {
       this.#access = await navigator.requestMIDIAccess({ sysex: false });
     } catch (err) {
       this.#el.connectBtn.disabled = false;
+      this.#el.select.options[0].textContent = 'MIDI access refused';
       this.#el.status.textContent = `MIDI access was refused (${err.name}). Allow MIDI for this site in the browser's settings, then try again.`;
       this.#el.status.hidden = false;
       this.#handlers.log(`MIDI access refused: ${err.message || err.name}`, 'ERROR');
