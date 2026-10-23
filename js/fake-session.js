@@ -107,6 +107,11 @@ export class FakeTempoSyncSession extends EventTarget {
   #closed = false;
   #id = Math.random().toString(36).slice(2);
   #broadcastChannel = null;
+  // Other tabs in this session: peer id -> last time heard from (ms). Like Link, peers announce themselves and
+  // repeat it every second. A tab that closes or navigates away says so and drops out at once; one that just goes
+  // quiet drops out after 70 s, longer than Chrome's once-a-minute timer throttling for hidden tabs.
+  #peers = new Map();
+  #presenceTimer = null;
 
   #timeline = {
     tempo: 120.0,
@@ -133,7 +138,7 @@ export class FakeTempoSyncSession extends EventTarget {
   }
 
   get numPeers() {
-    return 0;
+    return this.#peers.size;
   }
 
   get quantum() {
@@ -149,6 +154,12 @@ export class FakeTempoSyncSession extends EventTarget {
       return;
     }
     this.#closed = true;
+    if (this.#presenceTimer !== null) {
+      clearInterval(this.#presenceTimer);
+      this.#presenceTimer = null;
+    }
+    this.#post({ type: 'bye' });
+    this.#peers.clear();
     if (this.#broadcastChannel) {
       this.#broadcastChannel.close();
       this.#broadcastChannel = null;
@@ -244,7 +255,21 @@ export class FakeTempoSyncSession extends EventTarget {
       this.#broadcastChannel = new BroadcastChannel('web-tempo-sync-fake');
       this.#broadcastChannel.onmessage = (event) => {
         const data = event.data;
-        if (!data || data.senderId === this.#id || data.type !== 'sync-state') {
+        if (!data || data.senderId === this.#id) {
+          return;
+        }
+        if (data.type === 'bye') {
+          this.#dropPeer(data.senderId);
+          return;
+        }
+        this.#seePeer(data.senderId);
+        if (data.type === 'hello') {
+          // A tab just joined: tell it we're here and hand it the session's timeline, as Link does for a joiner.
+          this.#post({ type: 'presence' });
+          this.#broadcastState();
+          return;
+        }
+        if (data.type !== 'sync-state') {
           return;
         }
 
@@ -270,7 +295,43 @@ export class FakeTempoSyncSession extends EventTarget {
           }));
         }
       };
+      this.#post({ type: 'hello' });
+      if (typeof window !== 'undefined') {
+        window.addEventListener('pagehide', () => this.#post({ type: 'bye' }));
+      }
+      this.#presenceTimer = setInterval(() => {
+        this.#post({ type: 'presence' });
+        const cutoff = Date.now() - 70000;
+        for (const [id, seen] of this.#peers) {
+          if (seen < cutoff) {
+            this.#dropPeer(id);
+          }
+        }
+      }, 1000);
     } catch (_) {}
+  }
+
+  #post(message) {
+    if (!this.#broadcastChannel) {
+      return;
+    }
+    try {
+      this.#broadcastChannel.postMessage({ ...message, senderId: this.#id });
+    } catch (_) {}
+  }
+
+  #seePeer(id) {
+    const isNew = !this.#peers.has(id);
+    this.#peers.set(id, Date.now());
+    if (isNew) {
+      this.dispatchEvent(new CustomEvent('numpeerschange', { detail: { numPeers: this.#peers.size } }));
+    }
+  }
+
+  #dropPeer(id) {
+    if (this.#peers.delete(id)) {
+      this.dispatchEvent(new CustomEvent('numpeerschange', { detail: { numPeers: this.#peers.size } }));
+    }
   }
 
   #broadcastState() {

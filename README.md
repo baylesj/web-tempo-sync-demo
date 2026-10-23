@@ -20,6 +20,7 @@ To run the automated tests:
 
 ```bash
 node test/test-fake-session.js
+node test/test-peers.js
 python3 test/test_http_serve.py
 ```
 

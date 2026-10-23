@@ -29,13 +29,13 @@
 
       <nav class="view-tabs" aria-label="View">
         <div class="seg" role="tablist">
-          <button type="button" class="on" data-tab="sequencer" role="tab" aria-selected="true">sequencer</button>
-          <button type="button" data-tab="setup" role="tab" aria-selected="false">setup &amp; hardware</button>
-          <button type="button" data-tab="api" role="tab" aria-selected="false">api &amp; code</button>
+          <button type="button" class="on" data-tab="sequencer" role="tab" aria-controls="tab-sequencer" aria-selected="true">sequencer</button>
+          <button type="button" data-tab="setup" role="tab" aria-controls="tab-setup" aria-selected="false">setup &amp; hardware</button>
+          <button type="button" data-tab="api" role="tab" aria-controls="tab-api" aria-selected="false">api &amp; code</button>
         </div>
       </nav>
 
-      <div id="tab-sequencer" class="tab-view">
+      <div id="tab-sequencer" class="tab-view" role="tabpanel">
       <section class="split" aria-labelledby="session-label">
         <h2 class="label" id="session-label"><span class="n">01</span>session</h2>
         <div class="session">
@@ -147,7 +147,7 @@
       </section>
       </div>
 
-      <div id="tab-setup" class="tab-view" hidden>
+      <div id="tab-setup" class="tab-view" role="tabpanel" hidden>
         <section class="split" aria-labelledby="setup-tabs-label">
           <h2 class="label" id="setup-tabs-label"><span class="n">01</span>two tabs</h2>
           <div class="stack">
@@ -216,7 +216,7 @@
         </section>
       </div>
 
-      <div id="tab-api" class="tab-view" hidden>
+      <div id="tab-api" class="tab-view" role="tabpanel" hidden>
         <section class="split" aria-labelledby="api-audio-label">
           <h2 class="label" id="api-audio-label"><span class="n">01</span>audio clock</h2>
           <div class="stack">
@@ -231,19 +231,27 @@ const session = await navigator.tempoSync.requestSession({
   startStopSync: true,
 });
 
+let nextStep = null; // the next 16th-note step, in beats, not yet scheduled
+
+// Runs every 25 ms. Each call schedules only the steps it hasn't scheduled before, so a step
+// that falls inside several overlapping lookahead windows still plays once.
 function scheduleLookahead() {
   const state = session.captureState(audioContext);
   const now = audioContext.currentTime;
   const horizon = now + 0.100; // 100 ms lookahead window
+  const quantum = session.quantum;
 
-  const startBeat = Math.ceil(state.beatAtTime(now, session.quantum) * 4) / 4;
-  const endBeat = state.beatAtTime(horizon, session.quantum);
-
-  for (let beat = startBeat; beat &lt; endBeat; beat += 0.25) {
-    const audioTime = state.timeAtBeat(beat, session.quantum);
-    triggerStepAtTime(beat, audioTime);
+  if (nextStep === null) {
+    nextStep = Math.ceil(state.beatAtTime(now, quantum) * 4) / 4;
   }
-}</code></pre>
+  const endBeat = state.beatAtTime(horizon, quantum);
+
+  for (; nextStep &lt; endBeat; nextStep += 0.25) {
+    triggerStepAtTime(nextStep, state.timeAtBeat(nextStep, quantum));
+  }
+}
+
+setInterval(scheduleLookahead, 25);</code></pre>
           </div>
         </section>
 

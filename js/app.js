@@ -86,9 +86,14 @@ class App {
     el.latencyToggle.addEventListener('change', (e) => this.#toggleLatencyMode(e.target.checked));
     el.clearLogBtn.addEventListener('click', () => el.eventLog.replaceChildren());
 
+    // Tabs live in the URL (#setup, #api; the sequencer has none), so a reload keeps the tab and a tab can be
+    // linked. Arrow keys, Home and End move between them, as a tablist should.
     for (const btn of el.tabButtons) {
       btn.addEventListener('click', () => this.#switchTab(btn.dataset.tab));
+      btn.addEventListener('keydown', (e) => this.#onTabKey(e, btn));
     }
+    window.addEventListener('hashchange', () => this.#switchTab(this.#tabFromHash(), { updateHash: false }));
+    this.#switchTab(this.#tabFromHash(), { updateHash: false });
     el.openTabBtn?.addEventListener('click', () => {
       window.open(window.location.href, '_blank', 'noopener');
     });
@@ -145,18 +150,44 @@ class App {
     this.#log('Press Connect to start audio and join the session.', 'INFO');
   }
 
-  #switchTab(tabName) {
+  #tabFromHash() {
+    const name = window.location.hash.slice(1);
+    return name in this.#el.tabViews ? name : 'sequencer';
+  }
+
+  #switchTab(tabName, { updateHash = true } = {}) {
     const el = this.#el;
+    if (!(tabName in el.tabViews)) {
+      tabName = 'sequencer';
+    }
     for (const btn of el.tabButtons) {
       const active = btn.dataset.tab === tabName;
       btn.classList.toggle('on', active);
       btn.setAttribute('aria-selected', String(active));
+      btn.tabIndex = active ? 0 : -1; // one tab stop for the whole tablist; arrows move inside it
     }
     for (const [key, view] of Object.entries(el.tabViews)) {
       if (view) {
         view.hidden = key !== tabName;
       }
     }
+    if (updateHash) {
+      const url = tabName === 'sequencer' ? window.location.pathname + window.location.search : `#${tabName}`;
+      history.replaceState(null, '', url);
+    }
+  }
+
+  #onTabKey(e, btn) {
+    const tabs = this.#el.tabButtons;
+    const i = tabs.indexOf(btn);
+    const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+    if (next === undefined) {
+      return;
+    }
+    e.preventDefault();
+    const target = tabs[(next + tabs.length) % tabs.length];
+    this.#switchTab(target.dataset.tab);
+    target.focus();
   }
 
   // --- Session ---
