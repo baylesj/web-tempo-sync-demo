@@ -297,4 +297,7 @@ class App {
 // Bootstrap application on DOMContentLoaded
 window.addEventListener('DOMContentLoaded', () => {
   new App();
+  if (new URLSearchParams(window.location.search).get('autoconnect') === '1') {
+    document.getElementById('connect-btn')?.click();
+  }
 });
