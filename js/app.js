@@ -1,11 +1,9 @@
-// Page controller: session, transport, pattern, MIDI, latency mode and the event log.
+// Page controller: session, transport, metronome, pattern, latency mode and the event log.
 
 import { requestTempoSession } from './fake-session.js';
 import { AudioEngine } from './audio.js';
 import { BeatRing } from './beat-ring.js';
 import { SamplerUI } from './sampler-ui.js';
-import { MidiInput } from './midi-input.js';
-import { noteName } from './midi-clock.js';
 
 const STORE_PREFIX = 'tempo-sync-demo.';
 const TEMPO_MIN = 60;
@@ -36,10 +34,7 @@ class App {
   #audioEngine = new AudioEngine();
   #beatRing = null;
   #samplerUI = null;
-  #midi = null;
-  #noteMap = {}; // learned MIDI note -> track index
-  #learnTrack = null;
-  #lastClockCommit = 0;
+  #playLabel = '';
   #el = {};
 
   constructor() {
@@ -66,7 +61,6 @@ class App {
       clearLogBtn: $('clear-log-btn'),
     };
     this.#initUI();
-    this.#initMidi();
   }
 
   #initUI() {
@@ -98,12 +92,7 @@ class App {
       store.set('metronomeVolume', Number(el.metronomeVolume.value));
     });
 
-    // Pads should sound before a session exists, so Connect MIDI starts audio too, inside its own click (browsers
-    // refuse to start audio after an await). Any later tap wakes audio that a browser put to sleep.
-    $('midi-connect-btn').addEventListener('click', () => {
-      this.#audioEngine.ensureContext();
-      this.#audioEngine.resume().catch(() => {});
-    });
+    // A browser can put audio to sleep (Safari, a backgrounded tab); any tap wakes it.
     document.addEventListener('pointerdown', () => {
       if (this.#audioEngine.hasContext() && !this.#audioEngine.isRunning()) {
         this.#audioEngine.resume().catch(() => {});
@@ -114,107 +103,27 @@ class App {
       requestAnimationFrame(loop);
       try {
         this.#samplerUI.updatePlayhead();
+        this.#updatePlayButton();
       } catch (err) {
         console.warn('Playhead update failed:', err);
       }
     };
     requestAnimationFrame(loop);
-    this.#log('Press Connect to start audio and join the session.', 'INFO');
-  }
 
-  // --- MIDI ---
-
-  #initMidi() {
-    const saved = store.get('noteMap', {});
-    this.#noteMap = saved && typeof saved === 'object' ? saved : {};
-    this.#renderNoteLabels();
-    this.#samplerUI.onLearn = (track) => this.#setLearn(track);
-
-    const $ = (id) => document.getElementById(id);
-    this.#midi = new MidiInput(
-      {
-        connectBtn: $('midi-connect-btn'),
-        select: $('midi-input-select'),
-        follow: $('midi-follow'),
-        status: $('midi-status'),
-        clockBpm: $('midi-clock-bpm'),
-        clockDot: $('midi-clock-dot'),
-        transport: $('midi-transport'),
-        monitor: $('midi-monitor'),
-      },
-      {
-        onClockTempo: (bpm) => this.#followClockTempo(bpm),
-        onTransport: (kind) => this.#followClockTransport(kind),
-        onNote: (note, velocity) => this.#onNote(note, velocity),
-        log: (msg, tag) => this.#log(msg, tag),
+    // Space toggles Play/Stop, like Live. Not while typing in a field, and not on a focused button, where
+    // space already presses the button.
+    document.addEventListener('keydown', (e) => {
+      if (e.code !== 'Space' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || !this.#session) {
+        return;
       }
-    );
-  }
-
-  #followClockTempo(bpm) {
-    if (!this.#session) {
-      return;
-    }
-    const target = Math.max(TEMPO_MIN, Math.min(TEMPO_MAX, Math.round(bpm * 10) / 10));
-    const current = this.#session.captureState().tempo;
-    const now = performance.now();
-    // Only move the session for a real change, and not more than a few times a second.
-    if (Math.abs(target - current) < 0.1 - 1e-6 || now - this.#lastClockCommit < 200) {
-      return;
-    }
-    this.#lastClockCommit = now;
-    this.#onTempoInput(target);
-  }
-
-  #followClockTransport(kind) {
-    if (!this.#session) {
-      this.#log(`Ignored ${kind}: connect the session first`, 'MIDI');
-      return;
-    }
-    const play = kind !== 'stop';
-    if (play !== this.#isPlaying()) {
-      this.#requestPlaying(play);
-    }
-  }
-
-  #trackForNote(note) {
-    const learned = this.#noteMap[note];
-    if (Number.isInteger(learned) && learned >= 0 && learned < this.#samplerUI.trackCount) {
-      return learned;
-    }
-    return note % this.#samplerUI.trackCount;
-  }
-
-  #onNote(note, velocity) {
-    if (this.#learnTrack !== null) {
-      const track = this.#learnTrack;
-      for (const [n, t] of Object.entries(this.#noteMap)) {
-        if (t === track) {
-          delete this.#noteMap[n];
-        }
+      if (e.target instanceof Element && e.target.closest('input, select, textarea, button, [contenteditable]')) {
+        return;
       }
-      this.#noteMap[note] = track;
-      store.set('noteMap', this.#noteMap);
-      this.#renderNoteLabels();
-      this.#log(`Note ${note} (${noteName(note)}) now plays ${this.#audioEngine.tracks[track].name}`, 'MIDI');
-      this.#setLearn(null);
-    }
-    const track = this.#trackForNote(note);
-    if (this.#audioEngine.trigger(track, velocity / 127)) {
-      this.#samplerUI.flash(track);
-    }
-  }
-
-  #setLearn(track) {
-    this.#learnTrack = track;
-    this.#samplerUI.setLearning(track);
-  }
-
-  #renderNoteLabels() {
-    this.#audioEngine.tracks.forEach((_, t) => {
-      const note = Object.keys(this.#noteMap).find((n) => this.#noteMap[n] === t);
-      this.#samplerUI.setNoteLabel(t, note === undefined ? '' : `note ${note}`);
+      e.preventDefault();
+      this.#requestPlaying(!this.#isPlaying());
     });
+
+    this.#log('Press Connect to start audio and join the session.', 'INFO');
   }
 
   // --- Session ---
@@ -270,7 +179,6 @@ class App {
 
       const state = session.captureState();
       this.#syncTempoUI(state.tempo);
-      this.#syncPlayStateUI(state.isPlaying);
       this.#updateLatencyInfo();
 
       this.#log(
@@ -315,7 +223,7 @@ class App {
     el.statusText.textContent = 'Not connected';
     el.apiText.textContent = '–';
     el.peerCount.textContent = '0';
-    this.#syncPlayStateUI(false);
+    this.#updatePlayButton();
     this.#log('Left the session', 'SESSION');
   }
 
@@ -342,11 +250,10 @@ class App {
       return;
     }
     const { isPlaying } = this.#session.captureState();
-    this.#syncPlayStateUI(isPlaying);
     this.#log(isPlaying ? 'Playing' : 'Stopped', 'PLAYING');
   }
 
-  // The one path for tempo changes: the slider, the number field and MIDI clock all come through here.
+  // The one path for tempo changes: the slider and the number field both come through here.
   #onTempoInput(bpm) {
     const clamped = Math.max(TEMPO_MIN, Math.min(TEMPO_MAX, bpm));
     this.#syncTempoUI(clamped);
@@ -370,7 +277,7 @@ class App {
     return Boolean(this.#session?.captureState().isPlaying);
   }
 
-  // The one path for play/stop: the button and MIDI start/stop. Commits at the next quantum boundary.
+  // The one path for play/stop: the button and the space bar. Commits at the next quantum boundary.
   #requestPlaying(willPlay) {
     if (!this.#session) {
       return;
@@ -387,8 +294,25 @@ class App {
     this.#log(`${willPlay ? 'Play' : 'Stop'} at beat ${nextBar}, in ${(at - t).toFixed(2)} s`, 'PLAYING');
   }
 
-  #syncPlayStateUI(isPlaying) {
-    this.#el.playStopBtn.textContent = isPlaying ? 'Stop' : 'Play';
+  // The Play/Stop label, from the session state each frame. A start or stop waits for the next quantum
+  // boundary, so while one is pending (timeForIsPlaying still ahead) the button counts down to it. Reading the
+  // shared state, not a local flag, means a change committed by another peer counts down here too. Uses the
+  // performance.now() time base, like the beat ring, so it keeps counting even if audio is asleep.
+  #updatePlayButton() {
+    let label = 'Play';
+    if (this.#session) {
+      const state = this.#session.captureState();
+      const wait = state.timeForIsPlaying - performance.now() / 1000;
+      if (wait > 0.05) {
+        label = `${state.isPlaying ? 'Starts' : 'Stops'} in ${wait.toFixed(1)} s`;
+      } else {
+        label = state.isPlaying ? 'Stop' : 'Play';
+      }
+    }
+    if (label !== this.#playLabel) {
+      this.#playLabel = label;
+      this.#el.playStopBtn.textContent = label;
+    }
   }
 
   async #onQuantumChange() {

@@ -24,7 +24,7 @@ try:
     content = res.read().decode('utf-8')
     assert '<title>Tempo sync demo</title>' in content
 
-    for path in ['css/style.css', 'js/fake-session.js', 'js/audio.js', 'js/beat-ring.js', 'js/sampler-ui.js', 'js/midi-clock.js', 'js/midi-input.js', 'js/app.js']:
+    for path in ['css/style.css', 'js/fake-session.js', 'js/audio.js', 'js/beat-ring.js', 'js/sampler-ui.js', 'js/app.js']:
         r = opener.open(f'http://127.0.0.1:{PORT}/{path}')
         print(f'{path}: {r.status} ({len(r.read())} bytes)')
 

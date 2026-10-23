@@ -6,10 +6,8 @@ export class SamplerUI {
   #session = null;
   #stepButtons = []; // [trackIndex][stepIndex]
   #headerCells = [];
-  #rows = []; // per track: { row, learnBtn, noteLabel }
   #presetButtons = new Map();
   #lastPlayheadStep = -1;
-  #onLearn = null;
 
   static PRESETS = {
     fourOnTheFloor: {
@@ -54,15 +52,6 @@ export class SamplerUI {
     }
   }
 
-  // Called with a track index when its learn button is pressed (or null to cancel).
-  set onLearn(fn) {
-    this.#onLearn = fn;
-  }
-
-  get trackCount() {
-    return this.#audioEngine.tracks.length;
-  }
-
   buildUI() {
     this.#container.replaceChildren();
     const tracks = this.#audioEngine.tracks;
@@ -102,7 +91,6 @@ export class SamplerUI {
     grid.appendChild(header);
 
     this.#stepButtons = [];
-    this.#rows = [];
     tracks.forEach((track, trackIdx) => {
       const row = el('div', 'pattern-row');
       const meta = el('div', 'track');
@@ -148,16 +136,6 @@ export class SamplerUI {
       meta.appendChild(sampleBtn);
       meta.appendChild(fileInput);
 
-      const learnBtn = el('button', 'mini learn', 'learn');
-      learnBtn.type = 'button';
-      learnBtn.title = `Press, then hit a pad to play ${track.name}`;
-      learnBtn.addEventListener('click', () => {
-        const armed = learnBtn.getAttribute('aria-pressed') === 'true';
-        this.#onLearn?.(armed ? null : trackIdx);
-      });
-      meta.appendChild(learnBtn);
-      const noteLabel = el('span', 'note mono', '');
-      meta.appendChild(noteLabel);
       row.appendChild(meta);
 
       const steps = el('div', 'steps');
@@ -177,7 +155,6 @@ export class SamplerUI {
       this.#stepButtons.push(buttons);
       row.appendChild(steps);
       grid.appendChild(row);
-      this.#rows.push({ row, learnBtn, noteLabel });
     });
 
     this.#container.appendChild(grid);
@@ -211,31 +188,6 @@ export class SamplerUI {
     for (const [k, btn] of this.#presetButtons) {
       btn.classList.toggle('on', k === key);
     }
-  }
-
-  // Shows which track is waiting for a pad (null for none).
-  setLearning(trackIdx) {
-    this.#rows.forEach(({ learnBtn }, i) => learnBtn.setAttribute('aria-pressed', String(i === trackIdx)));
-  }
-
-  // Shows the learned note for a track ('' when it uses the default mapping).
-  setNoteLabel(trackIdx, text) {
-    if (this.#rows[trackIdx]) {
-      this.#rows[trackIdx].noteLabel.textContent = text;
-    }
-  }
-
-  // Briefly marks a track that a MIDI note just played.
-  flash(trackIdx) {
-    const row = this.#rows[trackIdx]?.row;
-    if (!row) {
-      return;
-    }
-    row.classList.remove('hit');
-    void row.offsetWidth; // restart the transition
-    row.classList.add('hit');
-    clearTimeout(row._hitTimer);
-    row._hitTimer = setTimeout(() => row.classList.remove('hit'), 120);
   }
 
   updatePlayhead() {

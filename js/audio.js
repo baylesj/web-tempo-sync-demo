@@ -234,7 +234,7 @@ export class AudioEngine {
 
   constructor() {
     // Tracks exist from the start so the pattern grid can be built; the AudioContext is created on the
-    // first user gesture (Connect, or Connect MIDI) and handed to them then.
+    // first user gesture (Connect) and handed to them then.
     this.#tracks = [
       new Track('Kick', 'kick', null, null),
       new Track('Snare', 'snare', null, null),
@@ -299,7 +299,7 @@ export class AudioEngine {
     this.ensureContext();
   }
 
-  // Forget the session (on disconnect), keeping the AudioContext for MIDI notes and the next connect.
+  // Forget the session (on disconnect), keeping the AudioContext for the next connect.
   detach() {
     this.#session = null;
   }
@@ -318,20 +318,6 @@ export class AudioEngine {
       }
     }
     return this.#audioContext;
-  }
-
-  // Plays a track now (a MIDI note), honouring mute and solo. velocity is 0-1.
-  trigger(trackIndex, velocity = 1.0) {
-    const track = this.#tracks[trackIndex];
-    if (!track || !this.#audioContext) {
-      return false;
-    }
-    const hasSolo = this.#tracks.some((t) => t.soloed);
-    if (track.muted || (hasSolo && !track.soloed)) {
-      return false;
-    }
-    track.play(this.#audioContext.currentTime, velocity);
-    return true;
   }
 
   setSession(session) {

@@ -69,7 +69,8 @@
               </select>
               <p class="help">
                 Play and Stop take effect at the start of the next quantum, so every peer starts on the same
-                beat. Tempo changes apply at once. Changing the quantum rejoins the session.
+                beat; the button counts down until then. Space does the same as the button. Tempo changes apply
+                at once. Changing the quantum rejoins the session.
               </p>
             </div>
 
@@ -100,49 +101,8 @@
         </div>
       </section>
 
-      <section class="split" aria-labelledby="midi-label">
-        <h2 class="label" id="midi-label"><span class="n">03</span>midi</h2>
-        <div class="stack">
-          <p id="midi-status" class="panel alert" hidden></p>
-          <div class="midi-controls">
-            <button id="midi-connect-btn" type="button">Connect MIDI</button>
-            <div class="grow">
-              <label for="midi-input-select">input</label>
-              <select id="midi-input-select" disabled>
-                <option value="">connect to list devices</option>
-              </select>
-            </div>
-          </div>
-          <label class="switch">
-            <input id="midi-follow" type="checkbox" checked />
-            <span class="track" aria-hidden="true"></span>
-            <span>follow clock</span>
-          </label>
-          <div class="rows">
-            <div class="kv">
-              <span>clock</span>
-              <span><span id="midi-clock-dot" class="dot clock-dot"></span><span id="midi-clock-bpm" class="mono">none</span></span>
-            </div>
-            <div class="kv">
-              <span>transport</span>
-              <span id="midi-transport" class="mono">–</span>
-            </div>
-          </div>
-          <p class="help">
-            With follow clock on, a steady MIDI clock sets the session tempo, and the input's Start and Stop work
-            like the Play button. Notes play the pattern rows: the note number modulo 4 picks a row, unless you
-            press a row's learn button and then a pad. An Ableton Move shows up over USB and is picked
-            automatically.
-          </p>
-          <div>
-            <h3 class="label">last messages</h3>
-            <ol id="midi-monitor" class="monitor"></ol>
-          </div>
-        </div>
-      </section>
-
       <section class="split" aria-labelledby="latency-label">
-        <h2 class="label" id="latency-label"><span class="n">04</span>latency</h2>
+        <h2 class="label" id="latency-label"><span class="n">03</span>latency</h2>
         <div class="stack">
           <label class="switch">
             <input id="latency-toggle" type="checkbox" />
@@ -163,7 +123,7 @@
       </section>
 
       <section class="split" aria-labelledby="log-label">
-        <h2 class="label" id="log-label"><span class="n">05</span>log</h2>
+        <h2 class="label" id="log-label"><span class="n">04</span>log</h2>
         <div class="stack">
           <ol id="event-log" class="log"></ol>
           <button id="clear-log-btn" type="button" class="quiet">Clear</button>

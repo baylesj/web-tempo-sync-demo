@@ -1,7 +1,7 @@
 /*
  * Page styles for the tempo sync demo. Everything else comes from bayl.es-style (eopsin.min.css):
  * this file only adds the signature and what the system doesn't have (beat ring layout, step grid,
- * switch, monitor and log). Unlayered, so it wins over the system's layers without !important.
+ * switch and event log). Unlayered, so it wins over the system's layers without !important.
  */
 
 /* Signature: purple fading into pink. Jordan's music sites are pink -> purple; this runs it the other
@@ -179,16 +179,6 @@ label.switch {
 .pattern .name {
   width: 56px;
   font-weight: 500;
-  transition: color 0.1s;
-}
-
-.pattern-row.hit .name {
-  color: var(--sig-text);
-}
-
-.pattern .note {
-  color: var(--comment);
-  font-size: 12px;
 }
 
 button.mini {
@@ -211,12 +201,6 @@ button.mini[aria-pressed="true"] {
   border-color: var(--green);
   background: color-mix(in srgb, var(--green-bright) 10%, var(--ground));
   color: var(--green);
-}
-
-button.mini.learn[aria-pressed="true"] {
-  border-color: var(--amber-text);
-  background: color-mix(in srgb, var(--amber) 14%, var(--ground));
-  color: var(--amber-text);
 }
 
 .pattern .steps {
@@ -289,72 +273,24 @@ button.step.now {
   }
 }
 
-/* MIDI */
-.midi-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 16px;
-  align-items: flex-end;
-}
-
-.midi-controls .grow {
-  flex: 1 1 220px;
-}
-
-.panel.alert[hidden] {
-  display: none;
-}
-
-.clock-dot {
-  transition: background 0.06s;
-}
-
-.clock-dot.beat {
-  background: var(--sig-fill);
-}
-
-/* Monitor and log: mono lines on hairlines. */
-.monitor,
+/* Event log: mono lines on hairlines. */
 .log {
+  max-height: 260px;
   margin: 0;
   padding: 0;
+  overflow-y: auto;
   font: 12px/1.6 var(--mono);
   list-style: none;
 }
 
-/* Room for all 12 lines once messages arrive, so the list doesn't jump as it fills; nothing reserved before. */
-.monitor:not(:empty) {
-  min-height: calc(12 * 1.6em);
-}
-
-.monitor:empty::before {
-  content: "nothing yet";
-  color: var(--comment);
-}
-
-.monitor li,
 .log li {
   display: grid;
+  grid-template-columns: 96px 64px minmax(0, 1fr);
   gap: 12px;
+  padding: 2px 0;
   border-top: 1px solid var(--line);
 }
 
-.monitor li {
-  grid-template-columns: 96px 110px 44px minmax(0, 1fr);
-}
-
-.log {
-  max-height: 260px;
-  overflow-y: auto;
-}
-
-.log li {
-  grid-template-columns: 96px 64px minmax(0, 1fr);
-  padding: 2px 0;
-}
-
-.monitor .t,
-.monitor .ch,
 .log .t,
 .log .tag {
   color: var(--comment);
@@ -366,14 +302,6 @@ button.step.now {
 }
 
 @media (width <= 480px) {
-  .monitor li {
-    grid-template-columns: 88px 1fr auto;
-  }
-
-  .monitor .ch {
-    display: none;
-  }
-
   .log li {
     grid-template-columns: 88px minmax(0, 1fr);
   }
@@ -381,13 +309,4 @@ button.step.now {
   .log .tag {
     display: none;
   }
-}
-
-/* A picker with nothing to pick reads as grey text, not as a field you can open. */
-select:disabled {
-  color: var(--comment);
-  background: transparent;
-  border-color: var(--line);
-  cursor: not-allowed;
-  opacity: 1;
 }
