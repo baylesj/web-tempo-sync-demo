@@ -382,3 +382,12 @@ button.step.now {
     display: none;
   }
 }
+
+/* A picker with nothing to pick reads as grey text, not as a field you can open. */
+select:disabled {
+  color: var(--comment);
+  background: transparent;
+  border-color: var(--line);
+  cursor: not-allowed;
+  opacity: 1;
+}

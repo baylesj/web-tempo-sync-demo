@@ -54,8 +54,8 @@ export class BeatRing {
       return;
     }
     const render = () => {
-      this.#draw();
       this.#animId = requestAnimationFrame(render);
+      this.#draw();
     };
     this.#animId = requestAnimationFrame(render);
   }
@@ -92,14 +92,25 @@ export class BeatRing {
   }
 
   #draw() {
+    // save/restore around every frame, even one that throws, so the scale never compounds.
+    this.#ctx.save();
+    try {
+      this.#drawFrame();
+    } catch (err) {
+      console.warn('Beat ring frame failed:', err);
+    } finally {
+      this.#ctx.restore();
+    }
+  }
+
+  #drawFrame() {
     const ctx = this.#ctx;
     const c = this.#colors;
     const { sans, mono } = this.#fonts;
     const width = this.#canvas.width / this.#dpr;
     const height = this.#canvas.height / this.#dpr;
 
-    ctx.save();
-    ctx.scale(this.#dpr, this.#dpr);
+    ctx.setTransform(this.#dpr, 0, 0, this.#dpr, 0, 0);
     ctx.clearRect(0, 0, width, height);
 
     const cx = width / 2;
@@ -119,7 +130,6 @@ export class BeatRing {
       ctx.font = `13px ${mono}`;
       ctx.fillStyle = c.comment;
       ctx.fillText('not connected', cx, cy);
-      ctx.restore();
       return;
     }
 
@@ -177,7 +187,5 @@ export class BeatRing {
     ctx.fillText(`${playing ? 'playing' : 'stopped'} · phase ${phase.toFixed(2)}/${quantum}`, cx, cy + 22);
     ctx.fillStyle = c.purple;
     ctx.fillText(`${vis.tempo.toFixed(1)} bpm`, cx, cy + 42);
-
-    ctx.restore();
   }
 }

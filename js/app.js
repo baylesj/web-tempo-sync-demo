@@ -99,8 +99,12 @@ class App {
     });
 
     const loop = () => {
-      this.#samplerUI.updatePlayhead();
       requestAnimationFrame(loop);
+      try {
+        this.#samplerUI.updatePlayhead();
+      } catch (err) {
+        console.warn('Playhead update failed:', err);
+      }
     };
     requestAnimationFrame(loop);
     this.#log('Press Connect to start audio and join the session.', 'INFO');
@@ -269,12 +273,20 @@ class App {
       return;
     }
     const el = this.#el;
-    this.#session.close();
+    const session = this.#session;
+    // Let go of the session everywhere it's read before closing it: a closed session throws on captureState(),
+    // and the ring's last redraw and the playhead loop would hit that.
     this.#session = null;
     this.#audioEngine.stopScheduler();
-    this.#beatRing.stop();
+    this.#audioEngine.detach();
     this.#beatRing.setSession(null);
+    this.#beatRing.stop();
     this.#samplerUI.setSession(null);
+    try {
+      session.close();
+    } catch (err) {
+      console.warn('Closing the session failed:', err);
+    }
 
     el.connectBtn.textContent = 'Connect';
     el.connectBtn.classList.remove('quiet');

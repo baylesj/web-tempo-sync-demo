@@ -30,6 +30,7 @@ export class MidiInput {
       this.#el.status.hidden = false;
       this.#el.connectBtn.disabled = true;
       this.#el.select.disabled = true;
+      this.#el.select.options[0].textContent = 'MIDI not available here';
       return;
     }
     this.#el.connectBtn.addEventListener('click', () => this.connect());
@@ -85,7 +86,7 @@ export class MidiInput {
     const current = this.#input?.id;
     const select = this.#el.select;
     select.replaceChildren();
-    const none = new Option(inputs.length ? 'none' : 'no MIDI inputs found', '');
+    const none = new Option(inputs.length ? 'none' : 'no devices found', '');
     select.appendChild(none);
     for (const input of inputs) {
       select.appendChild(new Option(input.name || input.id, input.id));

@@ -299,6 +299,11 @@ export class AudioEngine {
     this.ensureContext();
   }
 
+  // Forget the session (on disconnect), keeping the AudioContext for MIDI notes and the next connect.
+  detach() {
+    this.#session = null;
+  }
+
   // Creates the AudioContext if needed. Call from a user gesture.
   ensureContext() {
     if (!this.#audioContext) {
