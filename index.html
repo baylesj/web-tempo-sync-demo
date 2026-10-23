@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web Tempo Sync Prototype Demo</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <div class="header-left">
+        <h1 class="app-title">Web Tempo Sync</h1>
+        <span class="version-tag">Ableton Link Compatible Prototype</span>
+      </div>
+      <div class="header-right">
+        <div id="status-badge" class="status-badge badge-disconnected">Disconnected</div>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <!-- Top Row: Session Controls & Beat Ring -->
+      <section class="top-row">
+        <!-- Session Panel -->
+        <div class="card session-panel">
+          <div class="card-header">
+            <h2>Session Controls</h2>
+            <div class="peer-badge">
+              <span class="peer-icon">●</span>
+              <span id="peer-count" class="peer-num">0</span> peers
+            </div>
+          </div>
+
+          <div class="session-actions">
+            <button id="connect-btn" class="btn btn-primary" type="button">Connect</button>
+            <button id="play-stop-btn" class="btn btn-secondary" type="button">Play</button>
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="tempo-slider">Tempo (BPM)</label>
+              <input id="tempo-input" type="number" min="60" max="200" step="0.1" value="120.0" class="numeric-input">
+            </div>
+            <input id="tempo-slider" type="range" min="60" max="200" step="0.1" value="120.0" class="tempo-range">
+            <div class="range-limits">
+              <span>60</span>
+              <span>120</span>
+              <span>200</span>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="quantum-select">Quantum (Beats per Bar)</label>
+              <select id="quantum-select" class="select-input">
+                <option value="1">1 Beat</option>
+                <option value="2">2 Beats</option>
+                <option value="4" selected>4 Beats (Standard)</option>
+                <option value="8">8 Beats</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="session-note">
+            <small>Play/Stop commits at the next quantum boundary. Tempo changes update across tabs and peers.</small>
+          </div>
+        </div>
+
+        <!-- Beat Ring Visualization -->
+        <div class="card visualizer-card">
+          <div class="card-header">
+            <h2>Beat & Phase Visualizer</h2>
+          </div>
+          <div class="canvas-wrapper">
+            <canvas id="beat-ring-canvas" width="340" height="340"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Middle: Step Sampler -->
+      <section class="card sampler-card">
+        <div class="card-header">
+          <h2>16-Step Sampler</h2>
+          <span class="card-subtitle">Synthesized Web Audio (AudioBuffer expandable)</span>
+        </div>
+        <div id="sampler-container" class="sampler-container"></div>
+      </section>
+
+      <!-- Bottom Row: Latency Measurement & Event Log -->
+      <section class="bottom-row">
+        <!-- Latency Mode -->
+        <div class="card latency-card">
+          <div class="card-header">
+            <h2>Latency Measurement Mode</h2>
+            <label class="switch">
+              <input id="latency-toggle" type="checkbox">
+              <span class="slider-round"></span>
+            </label>
+          </div>
+          <p class="section-desc">
+            Emits metronome clicks on every beat with an accent on beat 0 of the quantum.
+            Record alongside Ableton Live's metronome into a DAW to measure browser audio output offset.
+          </p>
+          <div id="latency-info" class="latency-stats">
+            <div class="stat-box">
+              <div class="stat-label">Base Latency</div>
+              <div id="base-latency-val" class="stat-val">N/A</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Output Latency</div>
+              <div id="output-latency-val" class="stat-val">N/A</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Sample Rate</div>
+              <div id="sample-rate-val" class="stat-val">N/A</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Event Log -->
+        <div class="card log-card">
+          <div class="card-header">
+            <h2>Session Event Log</h2>
+            <button id="clear-log-btn" class="btn btn-subtle" type="button">Clear</button>
+          </div>
+          <div id="event-log" class="event-log"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <span>Web Tempo Sync Prototype • Ableton Link Compatible</span>
+    </footer>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
