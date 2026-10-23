@@ -342,6 +342,14 @@ export class AudioEngine {
     this.#onStepCallback = cb;
   }
 
+  hasContext() {
+    return Boolean(this.#audioContext);
+  }
+
+  isRunning() {
+    return this.#audioContext?.state === 'running';
+  }
+
   async resume() {
     if (this.#audioContext && this.#audioContext.state === 'suspended') {
       await this.#audioContext.resume();

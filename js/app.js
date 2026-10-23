@@ -98,6 +98,18 @@ class App {
       store.set('metronomeVolume', Number(el.metronomeVolume.value));
     });
 
+    // Pads should sound before a session exists, so Connect MIDI starts audio too, inside its own click (browsers
+    // refuse to start audio after an await). Any later tap wakes audio that a browser put to sleep.
+    $('midi-connect-btn').addEventListener('click', () => {
+      this.#audioEngine.ensureContext();
+      this.#audioEngine.resume().catch(() => {});
+    });
+    document.addEventListener('pointerdown', () => {
+      if (this.#audioEngine.hasContext() && !this.#audioEngine.isRunning()) {
+        this.#audioEngine.resume().catch(() => {});
+      }
+    });
+
     const loop = () => {
       requestAnimationFrame(loop);
       try {
@@ -131,11 +143,6 @@ class App {
         monitor: $('midi-monitor'),
       },
       {
-        onConnect: () => {
-          // Connect MIDI is a click, so audio may start here: pads play before a session exists.
-          this.#audioEngine.ensureContext();
-          this.#audioEngine.resume();
-        },
         onClockTempo: (bpm) => this.#followClockTempo(bpm),
         onTransport: (kind) => this.#followClockTransport(kind),
         onNote: (note, velocity) => this.#onNote(note, velocity),
@@ -222,13 +229,25 @@ class App {
       el.connectBtn.disabled = true;
       el.connectBtn.textContent = 'Connecting…';
 
+      // Start audio inside the tap itself, before any await: Safari only lets a page start sound from the
+      // tap's own handler, and an AudioContext resumed later can wait forever, which left this on "Connecting…".
+      this.#audioEngine.ensureContext();
+      const audioReady = this.#audioEngine.resume();
+
       const quantum = Number(el.quantumSelect.value) || 4;
       const { session, isNative } = await requestTempoSession({ quantum, startStopSync: true });
       this.#session = session;
       this.#isNative = isNative;
 
       this.#audioEngine.init(session);
-      await this.#audioEngine.resume();
+      // Never let audio hold up joining the session; if it's still asleep, the next tap wakes it.
+      const started = await Promise.race([
+        audioReady.then(() => true, () => false),
+        new Promise((resolve) => setTimeout(() => resolve(false), 1500)),
+      ]);
+      if (!started || !this.#audioEngine.isRunning()) {
+        this.#log('Sound is off until you tap the page again.', 'INFO');
+      }
       this.#audioEngine.startScheduler();
 
       this.#beatRing.setSession(session);
