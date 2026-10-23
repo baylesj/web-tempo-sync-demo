@@ -4,6 +4,7 @@ import { requestTempoSession } from './fake-session.js';
 import { AudioEngine } from './audio.js';
 import { BeatRing } from './beat-ring.js';
 import { SamplerUI } from './sampler-ui.js';
+import { highlightAll } from './highlight.js';
 
 const STORE_PREFIX = 'tempo-sync-demo.';
 const TEMPO_MIN = 60;
@@ -444,6 +445,7 @@ class App {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  highlightAll();
   new App();
   if (new URLSearchParams(window.location.search).get('autoconnect') === '1') {
     document.getElementById('connect-btn')?.click();

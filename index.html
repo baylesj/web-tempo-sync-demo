@@ -171,7 +171,7 @@
               In the prototype Chromium build, the browser process joins the local Ableton Link UDP multicast group
               (<code>224.76.78.75:20808</code>) and syncs with Ableton Live on the same laptop or local network.
             </p>
-            <pre class="code-snippet"><code>./out/Default/Chromium.app/Contents/MacOS/Chromium \
+            <pre class="code-snippet"><code data-lang="sh">./out/Default/Chromium.app/Contents/MacOS/Chromium \
   --enable-blink-features=TempoSync \
   --tempo-sync-engine=rust \
   "https://bayl.es/tempo-sync-demo/?autoconnect=1"</code></pre>
@@ -225,7 +225,7 @@
               shared session timeline directly into <code>AudioContext.currentTime</code> seconds, including output
               latency compensation:
             </p>
-            <pre class="code-snippet"><code>const audioContext = new AudioContext();
+            <pre class="code-snippet"><code data-lang="js">const audioContext = new AudioContext();
 const session = await navigator.tempoSync.requestSession({
   quantum: 4,
   startStopSync: true,
@@ -262,7 +262,7 @@ setInterval(scheduleLookahead, 25);</code></pre>
               Calling <code>session.captureState()</code> with no arguments uses <code>performance.now() / 1000</code>
               for <code>requestAnimationFrame</code> visuals and transport countdowns:
             </p>
-            <pre class="code-snippet"><code>// Quantize Play/Stop to the next quantum boundary
+            <pre class="code-snippet"><code data-lang="js">// Quantize Play/Stop to the next quantum boundary
 function toggleQuantizedPlay() {
   const state = session.captureState(audioContext);
   const now = audioContext.currentTime;
@@ -290,7 +290,7 @@ function renderLoop() {
               The browser owns UDP multicast sockets, peer discovery, and clock-offset filtering in the browser
               process. Pages only observe beat/phase math and peer counts:
             </p>
-            <pre class="code-snippet"><code>[SecureContext, Exposed=Window]
+            <pre class="code-snippet"><code data-lang="webidl">[SecureContext, Exposed=Window]
 partial interface Navigator {
   [SameObject] readonly attribute TempoSync tempoSync;
 };
