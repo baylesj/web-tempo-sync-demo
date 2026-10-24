@@ -168,10 +168,12 @@
           <h2 class="label" id="setup-live-label"><span class="n">02</span>ableton live</h2>
           <div class="stack">
             <p class="soft">
-              In the prototype Chromium build, the browser process joins the local Ableton Link UDP multicast group
+              In the prototype Chromium build (<a href="https://github.com/baylesj/tempo-sync-demo/releases/download/v0.1.0/Chromium-tempo-sync-macos-arm64.zip">macOS arm64 download</a>,
+              <a href="https://github.com/baylesj/tempo-sync-demo/releases/tag/v0.1.0">release v0.1.0</a>), the browser process joins the local Ableton Link UDP multicast group
               (<code>224.76.78.75:20808</code>) and syncs with Ableton Live on the same laptop or local network.
             </p>
-            <pre class="code-snippet"><code data-lang="sh">./out/Default/Chromium.app/Contents/MacOS/Chromium \
+            <pre class="code-snippet"><code data-lang="sh">xattr -cr Chromium.app
+./Chromium.app/Contents/MacOS/Chromium \
   --enable-blink-features=TempoSync \
   --tempo-sync-engine=rust \
   "https://bayl.es/tempo-sync-demo/?autoconnect=1"</code></pre>
