@@ -51,6 +51,8 @@ export function tokenize(source, lang) {
       kind = 'string';
     } else if (number !== undefined) {
       kind = 'number';
+    } else if (word !== undefined && lang === 'sh') {
+      kind = null; // shell arguments are plain; only the command, flags, strings and comments are coloured
     } else if (word !== undefined) {
       const next = source.slice(TOKEN.lastIndex).match(/^\s*(.)/)?.[1];
       if (keywords.has(word)) {
