@@ -31,6 +31,7 @@ An experiment with WebMIDI input (MIDI clock follow, notes to pattern rows) live
 A prebuilt macOS Apple Silicon prototype bundle (`Chromium-tempo-sync-macos-arm64.zip`) is attached to the [`v0.1.0` release](https://github.com/baylesj/tempo-sync-demo/releases/tag/v0.1.0):
 
 - Direct download: [`Chromium-tempo-sync-macos-arm64.zip`](https://github.com/baylesj/tempo-sync-demo/releases/download/v0.1.0/Chromium-tempo-sync-macos-arm64.zip)
+- Public mirror (this repo is private, so the GitHub links only work for people with access): https://bayl.es/tempo-sync-demo-builds/v0.1.0/Chromium-tempo-sync-macos-arm64.zip ([sha256](https://bayl.es/tempo-sync-demo-builds/v0.1.0/Chromium-tempo-sync-macos-arm64.zip.sha256))
 
 After extracting `Chromium.app`, clear the macOS quarantine attribute (since the prototype build is ad-hoc signed) and launch it with the `TempoSync` Blink feature and Rust Link engine enabled:
 
