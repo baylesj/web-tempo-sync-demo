@@ -395,3 +395,36 @@ button.step.now {
     display: none;
   }
 }
+
+/* The proposal's documents, as a row of cards under the intro. */
+.docs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin: 4px 0 6px;
+}
+
+.docs a {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.docs a:hover {
+  border-color: var(--sig);
+}
+
+.docs b {
+  font-weight: 600;
+  color: var(--sig-text);
+}
+
+.docs span {
+  font-size: 14px;
+  color: var(--soft);
+}

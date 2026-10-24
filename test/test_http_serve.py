@@ -22,7 +22,7 @@ try:
     res = opener.open(f'http://127.0.0.1:{PORT}/index.html')
     print('index.html status:', res.status)
     content = res.read().decode('utf-8')
-    assert '<title>Tempo sync demo</title>' in content
+    assert '<title>Web Tempo Sync</title>' in content
 
     for path in ['css/style.css', 'js/fake-session.js', 'js/audio.js', 'js/beat-ring.js', 'js/sampler-ui.js', 'js/highlight.js', 'js/app.js']:
         r = opener.open(f'http://127.0.0.1:{PORT}/{path}')

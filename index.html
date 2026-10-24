@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Tempo sync demo</title>
+    <title>Web Tempo Sync</title>
     <meta name="description" content="A page that keeps tempo with Ableton Link apps through the Web Tempo Sync API." />
     <link rel="icon" type="image/svg+xml" href="https://cdn.jsdelivr.net/gh/baylesj/bayl.es-style@v1.12.2/icons/home.svg" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -23,8 +23,20 @@
       </header>
 
       <p class="lede">
-        This page shares tempo, beat and play state with Ableton Link apps through the proposed Web Tempo Sync
-        API. Browsers without the API get a stand-in session that only this page's tabs share.
+        Web Tempo Sync is a proposed web API that lets a page keep tempo, beat and play state with Ableton Link
+        apps and hardware on the local network. This page is its home and demo: try it below, or read the
+        proposal.
+      </p>
+
+      <nav class="docs" aria-label="The proposal">
+        <a href="/web-tempo-sync/"><b>Specification</b><span>Draft CG report: the API and its algorithms</span></a>
+        <a href="/web-tempo-sync/explainer.html"><b>Explainer</b><span>The problem, use cases and design choices</span></a>
+        <a href="/web-tempo-sync/security-privacy-questionnaire.html"><b>Security &amp; privacy</b><span>W3C self-review questionnaire</span></a>
+        <a href="#setup"><b>Prototype Chromium</b><span>v0.1.0 for macOS, and how to connect Live and Move</span></a>
+      </nav>
+
+      <p class="help">
+        Browsers without the API get a stand-in session that only this page's tabs share.
       </p>
 
       <nav class="view-tabs" aria-label="View">
