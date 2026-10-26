@@ -6,6 +6,7 @@
 import { hub } from './hub.js';
 import { highlightAll } from './highlight.js';
 import { mountDoc } from './docs.js';
+import { aboutSection } from './tools/about.js';
 
 const TEMPO_MIN = 60;
 const TEMPO_MAX = 200;
@@ -94,6 +95,11 @@ async function mountTool(name) {
   try {
     const tool = await TOOLS[name]();
     await tool.mount(panel, hub);
+    // After mount, which fills the panel: what the tool is, and how it was made to play in time.
+    const about = aboutSection(name);
+    if (about) {
+      panel.prepend(about);
+    }
   } catch (err) {
     console.error(`The ${name} tool failed to load:`, err);
     const p = document.createElement('p');

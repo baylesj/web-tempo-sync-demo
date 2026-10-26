@@ -678,3 +678,72 @@ article.doc + .doc-source {
   border-radius: 8px;
   background: #fff;
 }
+
+/* The about line above each play tab. */
+.tool-about .stack {
+  max-width: 76ch;
+}
+
+.tool-about p {
+  margin: 0;
+}
+
+/* The docs in the read tabs: contents, heading links, inline code and tables, as on their own pages. */
+article.doc nav.toc {
+  margin: 0 0 24px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+article.doc nav.toc b {
+  display: block;
+  margin: 0 0 6px;
+  color: var(--soft);
+  font: 12px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+article.doc nav.toc ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+article.doc .anchor {
+  margin-left: 8px;
+  color: var(--comment);
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+article.doc :is(h2, h3, h4):hover .anchor {
+  opacity: 1;
+}
+
+article.doc :not(pre) > code {
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--field);
+  font-size: 0.85em;
+}
+
+article.doc .table-wrap {
+  overflow-x: auto;
+}
+
+article.doc table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+article.doc th,
+article.doc td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
