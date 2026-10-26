@@ -185,9 +185,13 @@ export class FakeTempoSyncSession extends EventTarget {
     return perfNow - ctxNow;
   }
 
-  captureState(audioContext = null) {
+  // Like the real IDL (`optional BaseAudioContext context`), null is not "no context".
+  captureState(audioContext = undefined) {
     if (this.#closed) {
       throw new Error('Session is closed');
+    }
+    if (audioContext === null) {
+      throw new TypeError('captureState() takes a BaseAudioContext or nothing, not null');
     }
 
     if (audioContext) {

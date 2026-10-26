@@ -338,7 +338,7 @@ class App {
       return;
     }
     const ctx = this.#audioEngine.audioContext;
-    const state = this.#session.captureState(ctx || null);
+    const state = this.#session.captureState(ctx ?? undefined);
     const t = ctx ? ctx.currentTime : performance.now() / 1000;
     state.setTempo(clamped, t);
     this.#session.commitState(state);
@@ -360,7 +360,7 @@ class App {
       return;
     }
     const ctx = this.#audioEngine.audioContext;
-    const state = this.#session.captureState(ctx || null);
+    const state = this.#session.captureState(ctx ?? undefined);
     const t = ctx ? ctx.currentTime : performance.now() / 1000;
     const quantum = this.#session.quantum || 4;
 

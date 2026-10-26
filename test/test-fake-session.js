@@ -80,6 +80,10 @@ async function runTests() {
   const perfBeat = session.captureState().beatAtTime(12.0, 4);
   assert(Math.abs(audioBeat - perfBeat) < 1e-6, `AudioContext mapping mismatch: ${audioBeat} vs ${perfBeat}`);
 
+  // As with the real API, no context means omitting the argument; null is a TypeError.
+  assert.throws(() => session.captureState(null), TypeError);
+  assert.strictEqual(session.captureState(undefined).tempo, 140.0);
+
   session.close();
   console.log('All tests passed!');
 }
