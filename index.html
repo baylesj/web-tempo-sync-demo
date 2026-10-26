@@ -25,51 +25,67 @@
       <div class="sticky-top">
       <nav class="navbar" aria-label="Sections">
         <div class="nav-tabs" role="tablist">
-          <button type="button" class="on" data-tab="home" role="tab" aria-controls="tab-home" aria-selected="true">home</button>
-          <span class="nav-group" role="presentation">read</span>
-          <button type="button" data-tab="spec" role="tab" aria-controls="tab-spec" aria-selected="false">spec</button>
-          <button type="button" data-tab="explainer" role="tab" aria-controls="tab-explainer" aria-selected="false">explainer</button>
-          <button type="button" data-tab="objections" role="tab" aria-controls="tab-objections" aria-selected="false">objections</button>
-          <button type="button" data-tab="privacy" role="tab" aria-controls="tab-privacy" aria-selected="false">privacy</button>
-          <span class="nav-group" role="presentation">play</span>
-          <button type="button" data-tab="sampler" role="tab" aria-controls="tab-sampler" aria-selected="false">sampler</button>
-          <button type="button" data-tab="strudel" role="tab" aria-controls="tab-strudel" aria-selected="false">strudel</button>
-          <button type="button" data-tab="hydra" role="tab" aria-controls="tab-hydra" aria-selected="false">hydra</button>
-          <button type="button" data-tab="tone" role="tab" aria-controls="tab-tone" aria-selected="false">tone.js</button>
-          <button type="button" data-tab="arpeggios" role="tab" aria-controls="tab-arpeggios" aria-selected="false">arpeggios</button>
-          <span class="nav-group" role="presentation">build</span>
-          <button type="button" data-tab="setup" role="tab" aria-controls="tab-setup" aria-selected="false">setup</button>
-          <button type="button" data-tab="api" role="tab" aria-controls="tab-api" aria-selected="false">api</button>
+          <div class="nav-section" data-group="home" role="presentation">
+            <button type="button" class="on" data-tab="home" role="tab" aria-controls="tab-home" aria-selected="true">home</button>
+          </div>
+          <div class="nav-section" data-group="read" role="presentation">
+            <span class="nav-group">read</span>
+            <button type="button" data-tab="spec" role="tab" aria-controls="tab-spec" aria-selected="false">spec</button>
+            <button type="button" data-tab="explainer" role="tab" aria-controls="tab-explainer" aria-selected="false">explainer</button>
+            <button type="button" data-tab="objections" role="tab" aria-controls="tab-objections" aria-selected="false">objections</button>
+            <button type="button" data-tab="privacy" role="tab" aria-controls="tab-privacy" aria-selected="false">privacy</button>
+          </div>
+          <div class="nav-section" data-group="play" role="presentation">
+            <span class="nav-group">play</span>
+            <button type="button" data-tab="sampler" role="tab" aria-controls="tab-sampler" aria-selected="false">sampler</button>
+            <button type="button" data-tab="strudel" role="tab" aria-controls="tab-strudel" aria-selected="false">strudel</button>
+            <button type="button" data-tab="hydra" role="tab" aria-controls="tab-hydra" aria-selected="false">hydra</button>
+            <button type="button" data-tab="tone" role="tab" aria-controls="tab-tone" aria-selected="false">tone.js</button>
+            <button type="button" data-tab="arpeggios" role="tab" aria-controls="tab-arpeggios" aria-selected="false">arpeggios</button>
+          </div>
+          <div class="nav-section" data-group="build" role="presentation">
+            <span class="nav-group">build</span>
+            <button type="button" data-tab="setup" role="tab" aria-controls="tab-setup" aria-selected="false">setup</button>
+            <button type="button" data-tab="api" role="tab" aria-controls="tab-api" aria-selected="false">api</button>
+          </div>
         </div>
       </nav>
 
       <section class="session-bar" aria-label="Session" hidden>
-        <div class="sb-status">
-          <span id="status-dot" class="dot"></span>
-          <span id="status-text">Not connected</span>
-          <span id="api-text" class="mono soft"></span>
-          <div id="beat-dots" class="beat-dots" aria-hidden="true"></div>
+        <div class="sb-cell sb-session">
+          <span class="sb-caption">session <span id="api-text" class="sb-api"></span></span>
+          <div class="sb-body">
+            <span id="status-dot" class="dot"></span>
+            <span id="status-text">Not connected</span>
+          </div>
         </div>
-        <div class="actions">
+        <div class="sb-cell sb-beat">
+          <span class="sb-caption">beat</span>
+          <div class="sb-body"><div id="beat-dots" class="beat-dots" aria-hidden="true"></div></div>
+        </div>
+        <div class="sb-cell sb-tempo">
+          <label class="sb-caption" for="tempo-input">tempo</label>
+          <div class="sb-body">
+            <input id="tempo-input" class="tempo-number" type="number" min="60" max="200" step="0.1" value="120.0" aria-label="Tempo in BPM" />
+            <span class="sb-unit">bpm</span>
+            <input id="tempo-slider" type="range" min="60" max="200" step="0.1" value="120.0" aria-label="Tempo" />
+          </div>
+        </div>
+        <div class="sb-cell sb-quantum">
+          <label class="sb-caption" for="quantum-select">bar</label>
+          <div class="sb-body">
+            <select id="quantum-select" aria-label="Quantum, in beats">
+              <option value="2">2 beats</option>
+              <option value="3">3 beats</option>
+              <option value="4" selected>4 beats</option>
+              <option value="8">8 beats</option>
+            </select>
+          </div>
+        </div>
+        <div class="sb-cell sb-actions">
           <button id="play-stop-btn" type="button" class="quiet" disabled>Play</button>
           <button id="connect-btn" type="button">Connect</button>
-          <button id="open-window-btn" type="button" class="quiet" title="Open this tab in its own window">New window</button>
-        </div>
-        <div class="sb-controls">
-        <div class="sb-tempo">
-          <label for="tempo-input" class="sub">bpm</label>
-          <input id="tempo-input" class="tempo-number" type="number" min="60" max="200" step="0.1" value="120.0" aria-label="Tempo in BPM" />
-          <input id="tempo-slider" type="range" min="60" max="200" step="0.1" value="120.0" aria-label="Tempo" />
-        </div>
-        <div class="sb-quantum">
-          <label for="quantum-select" class="sub">bar</label>
-          <select id="quantum-select" aria-label="Quantum, in beats">
-            <option value="2">2 beats</option>
-            <option value="3">3 beats</option>
-            <option value="4" selected>4 beats</option>
-            <option value="8">8 beats</option>
-          </select>
-        </div>
+          <button id="open-window-btn" type="button" class="quiet sb-icon" title="Open this tab in its own window" aria-label="Open this tab in its own window"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M9 2.5h4.5V7M13.5 2.5 7.5 8.5M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </div>
       </section>
 
