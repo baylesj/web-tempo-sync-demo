@@ -9,6 +9,8 @@ os.environ['no_proxy'] = '127.0.0.1,localhost'
 
 PORT = 8124
 handler = http.server.SimpleHTTPRequestHandler
+# Rebind at once when run again, instead of waiting out TIME_WAIT from the last run.
+socketserver.TCPServer.allow_reuse_address = True
 httpd = socketserver.TCPServer(('127.0.0.1', PORT), handler)
 t = threading.Thread(target=httpd.serve_forever)
 t.daemon = True
