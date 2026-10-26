@@ -1,0 +1,485 @@
+/*
+ * Copyright 2016 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ * The arpeggios tab. Ported from Chrome Music Lab's Arpeggios: style/main.scss, part.scss,
+ * chord.scss, sound.scss and metronome.scss. Modified in 2026 for the Web Tempo Sync demo:
+ * plain CSS; everything scoped to .arp-stage, a box in the page rather than the whole window;
+ * container queries for its small sizes; a dark variant for the page's dark theme. The rest
+ * of the tab uses the page's own classes (bayl.es-style).
+ */
+
+/* .stack is flex, which would otherwise win over [hidden]. */
+#tab-arpeggios [hidden] {
+  display: none;
+}
+
+#tab-arpeggios .split + .split {
+  margin-top: 28px;
+}
+
+.arp-frame {
+  container-type: inline-size;
+}
+
+.arp-stage {
+  /* the original's palette (common.scss) */
+  --arp-orange: #ffb729;
+  --arp-bg: rgb(242, 242, 242);
+  --arp-panel: white;
+  --arp-button: white;
+  --arp-icon: rgb(100, 100, 100);
+  --arp-shadow: rgba(0, 0, 0, 0.4);
+  --arp-track: #eeeeee;
+  --arp-playhead: black;
+  --arp-highlight: black;
+  --arp-strip: 200px;
+  --arp-size: 60px;
+  --arp-margin: 12px;
+
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--arp-bg);
+  font-family: "Quicksand", var(--sans, sans-serif);
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Dark: the same layout and chord colours, with the white panels dimmed. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .arp-stage {
+    --arp-bg: #232327;
+    --arp-panel: #19191c;
+    --arp-button: #34343a;
+    --arp-icon: #d6d6da;
+    --arp-shadow: rgba(0, 0, 0, 0.7);
+    --arp-track: #34343a;
+    --arp-playhead: white;
+    --arp-highlight: white;
+  }
+}
+
+:root[data-theme="dark"] .arp-stage {
+  --arp-bg: #232327;
+  --arp-panel: #19191c;
+  --arp-button: #34343a;
+  --arp-icon: #d6d6da;
+  --arp-shadow: rgba(0, 0, 0, 0.7);
+  --arp-track: #34343a;
+  --arp-playhead: white;
+  --arp-highlight: white;
+}
+
+/* --- Buttons (main.scss .Button) --- */
+
+.arp-stage .arp-button,
+.arp-stage .arp-button:hover,
+.arp-stage .arp-button:disabled {
+  display: grid;
+  place-items: center;
+  width: var(--arp-size);
+  height: var(--arp-size);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--arp-button);
+  box-shadow: 0 0 10px 0 var(--arp-shadow);
+  color: var(--arp-icon);
+  filter: none;
+  cursor: pointer;
+  transition: transform 0.05s ease-in;
+}
+
+.arp-stage .arp-button svg {
+  width: 72%;
+  height: 72%;
+}
+
+.arp-stage .arp-button:active {
+  transform: scale(1.1);
+}
+
+.arp-stage .arp-button:focus {
+  outline: none;
+}
+
+.arp-stage .arp-button:focus-visible {
+  outline: 2px solid var(--sig, var(--arp-orange));
+  outline-offset: 3px;
+}
+
+/* slick's .slick-disabled */
+.arp-stage .arp-button:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* --- The parts (part.scss) --- */
+
+.arp-parts {
+  position: relative;
+  z-index: 2;
+  height: var(--arp-strip);
+  overflow: hidden;
+  background: var(--arp-panel);
+  touch-action: pan-y;
+}
+
+.arp-track {
+  display: flex;
+  height: 100%;
+  transition: transform 0.3s ease;
+}
+
+.arp-track.dragging {
+  transition: none;
+}
+
+.arp-part {
+  position: relative;
+  flex: 0 0 100%;
+  height: 100%;
+  box-shadow: inset 12px 0 7px -7px rgba(0, 0, 0, 0.1);
+}
+
+.arp-note {
+  position: absolute;
+  height: 5px;
+  background-color: white;
+  transition: background-color 0.3s, top 0.3s;
+}
+
+.arp-highlight {
+  position: absolute;
+  inset: 0;
+  background: var(--arp-highlight);
+  opacity: 0;
+}
+
+.arp-highlight.active {
+  opacity: 1;
+}
+
+.arp-loop-position {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  width: 4px;
+  height: 100%;
+  margin-left: -2px;
+  background: var(--arp-playhead);
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.arp-stage .arp-arrow {
+  position: absolute;
+  top: calc(var(--arp-strip) + var(--arp-margin));
+  z-index: 3;
+}
+
+.arp-stage .arp-arrow.prev {
+  left: var(--arp-margin);
+}
+
+.arp-stage .arp-arrow.next {
+  right: var(--arp-margin);
+}
+
+/* --- The chord wheel (chord.scss) --- */
+
+.arp-chord {
+  position: relative;
+  height: clamp(340px, 62cqi, 600px);
+  min-height: 300px;
+}
+
+.arp-wheel {
+  --dim: 400px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+}
+
+.arp-canvas,
+.arp-letters,
+.arp-interaction {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.arp-interaction {
+  border-radius: 50%;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.arp-interaction:focus {
+  outline: none;
+}
+
+.arp-interaction:focus-visible {
+  outline: 2px solid var(--sig, var(--arp-orange));
+  outline-offset: 4px;
+}
+
+.arp-letter {
+  position: absolute;
+  color: white;
+  font-family: "Quicksand", sans-serif;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.arp-letter span {
+  font-size: 0.5em;
+  vertical-align: text-top;
+}
+
+/* 20px and 18px on a wheel of about 450px, 2.5em and 2em on a large one */
+.arp-letter.major {
+  font-size: clamp(17px, calc(var(--dim) * 0.045), 40px);
+}
+
+.arp-letter.minor {
+  font-size: clamp(15px, calc(var(--dim) * 0.04), 32px);
+}
+
+.arp-stage .arp-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  width: 80px;
+  height: 80px;
+  margin: -40px 0 0 -40px;
+}
+
+.arp-stage .arp-play svg {
+  width: 80%;
+  height: 80%;
+}
+
+/* waiting for the bar line */
+.arp-stage .arp-play.pending {
+  animation: arp-pending 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes arp-pending {
+  to {
+    box-shadow: 0 0 0 6px var(--arp-orange), 0 0 10px 0 var(--arp-shadow);
+  }
+}
+
+/* --- The instrument and metronome buttons (sound.scss) --- */
+
+.arp-stage .arp-instrument,
+.arp-stage .arp-metronome-button {
+  position: absolute;
+  bottom: var(--arp-margin);
+  z-index: 3;
+}
+
+.arp-stage .arp-instrument {
+  left: var(--arp-margin);
+}
+
+.arp-stage .arp-metronome-button {
+  right: var(--arp-margin);
+}
+
+/* --- The tempo dial (metronome.scss) --- */
+
+.arp-metronome {
+  position: absolute;
+  top: calc(var(--arp-strip) + 2px);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+  background: var(--arp-panel);
+  opacity: 0;
+  transform: translateY(100%);
+  transition: transform 0.2s ease-out, opacity 0.2s;
+  pointer-events: none;
+}
+
+.arp-metronome.visible {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.arp-metro-wheel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 300px;
+  height: 300px;
+  transform: translate(-50%, -50%);
+}
+
+.arp-dial {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke-linecap: round;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.arp-dial:focus {
+  outline: none;
+}
+
+.arp-dial-bg {
+  stroke: var(--arp-track);
+}
+
+.arp-dial-fg {
+  stroke: var(--arp-orange);
+}
+
+.arp-stage .arp-handle {
+  position: absolute;
+  z-index: 2;
+  width: 20%;
+  height: 20%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.arp-dial:focus-visible ~ .arp-handle {
+  outline: 2px solid var(--sig, var(--arp-orange));
+  outline-offset: 3px;
+}
+
+.arp-blinky {
+  position: absolute;
+  top: 30%;
+  left: 30%;
+  width: 40%;
+  height: 40%;
+  border-radius: 50%;
+  background: var(--arp-orange);
+  opacity: 0;
+}
+
+.arp-stage .arp-check,
+.arp-stage .arp-check:hover {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 120px;
+  height: 120px;
+  margin: -60px 0 0 -60px;
+  background: var(--arp-button) var(--check) center / 100% 100% no-repeat;
+}
+
+.arp-stage .arp-check:active {
+  background-color: rgb(75, 178, 80);
+  background-image: var(--check-active);
+}
+
+.arp-bpm {
+  position: absolute;
+  top: 73%;
+  right: 0;
+  left: 0;
+  color: var(--arp-icon);
+  font-size: 16px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.arp-bpm b {
+  font-size: 20px;
+}
+
+.arp-icon {
+  position: absolute;
+  top: 80%;
+  width: 45px;
+  height: 45px;
+  color: var(--arp-icon);
+  pointer-events: none;
+}
+
+.arp-turtle {
+  left: -14%;
+}
+
+.arp-rabbit {
+  right: -14%;
+}
+
+/* --- Small screens (common.scss SmallWidth, SmallHeight) --- */
+
+@container (max-width: 420px) {
+  .arp-stage {
+    --arp-size: 45px;
+    --arp-margin: 10px;
+    --arp-strip: 160px;
+  }
+
+  .arp-stage .arp-play {
+    width: 64px;
+    height: 64px;
+    margin: -32px 0 0 -32px;
+  }
+
+  .arp-metro-wheel {
+    width: 230px;
+    height: 230px;
+  }
+
+  .arp-stage .arp-check,
+  .arp-stage .arp-check:hover {
+    width: 92px;
+    height: 92px;
+    margin: -46px 0 0 -46px;
+  }
+
+  .arp-icon {
+    width: 30px;
+    height: 30px;
+  }
+}
+
+@media (max-height: 500px) {
+  .arp-stage {
+    --arp-strip: 160px;
+  }
+}
+
+.arp-status {
+  min-height: 1.4em;
+  margin: 0;
+  font-size: 13px;
+}

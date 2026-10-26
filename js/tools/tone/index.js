@@ -4,6 +4,7 @@
 
 import { BARS, KEYS, MOODS, makePatterns } from './music.js';
 import { Instrument, SOUNDS } from './instrument.js';
+import { getTone } from './runtime.js';
 
 const STORE_PREFIX = 'tempo-sync-demo.tone.';
 const TEMPO_MIN = 60;
@@ -75,21 +76,12 @@ function loadStyle() {
   }
 }
 
-// The vendored build is Tone's UMD bundle: importing it defines globalThis.Tone.
-async function loadTone() {
-  await import('./vendor/Tone.js');
-  return globalThis.Tone;
-}
-
 export async function mount(panel, hub) {
   loadStyle();
-  const Tone = await loadTone();
-
-  // A native AudioContext, so the session can give times in its currentTime: Tone's own
-  // default is a standardized-audio-context wrapper, which captureState() won't take.
-  const audio = new AudioContext({ latencyHint: 'interactive' });
-  Tone.setContext(audio, true);
-  const transport = Tone.getTransport();
+  // Tone, its native context and the Transport's session sync are shared with other tabs.
+  const runtime = await getTone(hub);
+  const { Tone, transport } = runtime;
+  const audio = runtime.context;
   const instrument = new Instrument(Tone);
 
   const settings = {
@@ -335,8 +327,7 @@ export async function mount(panel, hub) {
   }
 
   hub.onSession((session) => {
-    sync?.dispose();
-    sync = null;
+    sync = runtime.sync;
     noSession.hidden = Boolean(session);
     playControls.hidden = !session;
     rows.hidden = !session;
@@ -351,7 +342,6 @@ export async function mount(panel, hub) {
     buildGrid();
     regenerate();
     startSequence();
-    sync = transport.syncTempoSession(session, { quantum: q });
     instrument.setTempo(sync.tempo ?? 120);
   });
 
