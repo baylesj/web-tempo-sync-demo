@@ -430,17 +430,18 @@ button.step.now {
 }
 
 /* Session bar: one session for the whole page, above the tabs, so it stays put while tools
-   change underneath it. Sticks to the top when the page scrolls. */
+   change underneath it. Sticks to the top when the page scrolls. Two rows: who you're playing
+   with and the transport, then tempo and bar length. */
 .session-bar {
   position: sticky;
   top: 0;
   z-index: 5;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 20px;
   align-items: center;
-  margin: 18px 0 22px;
-  padding: 12px 14px;
+  margin: 24px 0;
+  padding: 14px 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--ground);
@@ -448,15 +449,27 @@ button.step.now {
 
 .session-bar .sb-status {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   align-items: center;
-  min-width: 13em;
+}
+
+.session-bar .sb-status .beat-dots {
+  margin-left: 4px;
+}
+
+.session-bar .sb-controls {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  align-items: center;
 }
 
 .session-bar .sb-tempo,
 .session-bar .sb-quantum {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
 }
 
@@ -465,11 +478,11 @@ button.step.now {
 }
 
 .session-bar .sb-tempo input[type="range"] {
-  width: 160px;
+  width: 220px;
 }
 
 .session-bar .actions {
-  margin-left: auto;
+  margin: 0;
 }
 
 /* One dot per beat of the bar; the current beat lights, in the signature colour while playing. */
@@ -500,13 +513,24 @@ button.step.now {
 }
 
 @media (width <= 760px) {
-  .session-bar .actions {
-    margin-left: 0;
+  /* On a phone a sticky bar would cover half the screen, and a new window means little. */
+  .session-bar {
+    position: static;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #open-window-btn {
+    display: none;
   }
 
   .session-bar .sb-tempo input[type="range"] {
-    width: 120px;
+    width: 140px;
   }
+}
+
+/* Sections in a tab: room below each, so text never runs into the next section's rule. */
+.tab-view > .split {
+  padding-bottom: 28px;
 }
 
 /* The log, out of the way under every tab. */

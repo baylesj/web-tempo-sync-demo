@@ -34,8 +34,14 @@
           <span id="status-dot" class="dot"></span>
           <span id="status-text">Not connected</span>
           <span id="api-text" class="mono soft"></span>
+          <div id="beat-dots" class="beat-dots" aria-hidden="true"></div>
         </div>
-        <div id="beat-dots" class="beat-dots" aria-hidden="true"></div>
+        <div class="actions">
+          <button id="play-stop-btn" type="button" class="quiet" disabled>Play</button>
+          <button id="connect-btn" type="button">Connect</button>
+          <button id="open-window-btn" type="button" class="quiet" title="Open this tab in its own window">New window</button>
+        </div>
+        <div class="sb-controls">
         <div class="sb-tempo">
           <label for="tempo-input" class="sub">bpm</label>
           <input id="tempo-input" class="tempo-number" type="number" min="60" max="200" step="0.1" value="120.0" aria-label="Tempo in BPM" />
@@ -50,10 +56,6 @@
             <option value="8">8 beats</option>
           </select>
         </div>
-        <div class="actions">
-          <button id="play-stop-btn" type="button" class="quiet" disabled>Play</button>
-          <button id="connect-btn" type="button">Connect</button>
-          <button id="open-window-btn" type="button" class="quiet" title="Open this tab in its own window">New window</button>
         </div>
       </section>
 
@@ -402,7 +404,7 @@ interface TempoSessionState {
 
       <footer>
         <span><a href="https://bayl.es">bayl.es</a></span>
-        <a href="https://github.com/baylesj/web-tempo-sync-demo">source (AGPL-3.0)</a>
+        <a href="source.tar.gz">source (AGPL-3.0)</a>
         <a href="https://style.bayl.es">style.bayl.es</a>
       </footer>
     </main>

@@ -62,4 +62,6 @@ An experiment with Web MIDI input lives on the `midi` branch.
 
 ## License
 
-AGPL-3.0-or-later; see `LICENSE`. The Strudel and Hydra tabs use AGPL-licensed libraries, so the whole site is AGPL and this repository is its source. The Tone.js and Chrome Music Lab code keeps its own licenses (MIT and Apache-2.0); see each tool's folder.
+AGPL-3.0-or-later; see `LICENSE`. Every publish puts this commit's full source at https://bayl.es/tempo-sync/source.tar.gz (the footer's "source" link), and the Tone.js fork's at https://bayl.es/tempo-sync-demo-builds/source/, since this repository is private for now.
+
+**TODO:** make this repository (and `tempo-sync`, `web-tempo-sync`) public, then link the footer to GitHub and set up GitHub Pages. The Strudel and Hydra tabs use AGPL-licensed libraries, so the whole site is AGPL and this repository is its source. The Tone.js and Chrome Music Lab code keeps its own licenses (MIT and Apache-2.0); see each tool's folder.

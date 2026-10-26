@@ -6,3 +6,4 @@
 - Branch: `tempo-sync`, commit `d31f6d00817994040bd7555e9d34792d50ab717e`
 - Change: `Transport.syncTempoSession(session, { quantum })` and the `TempoSessionSync` class (`Tone/core/clock/TempoSessionSync.ts`), with tests in `TempoSessionSync.test.ts`.
 - The `//# sourceMappingURL` line is removed, since the map isn't vendored.
+- Source of this commit: https://bayl.es/tempo-sync-demo-builds/source/Tone.js-tempo-sync-d31f6d0.tar.gz
