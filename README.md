@@ -23,7 +23,7 @@ Each tool loads the first time its tab opens and keeps running when you switch a
 
 The page uses `navigator.tempoSync` when the browser has it, from the [extension](https://github.com/baylesj/tempo-sync/tree/main/extension) on stable Chrome or from the prototype Chromium build. Otherwise it uses a stand-in (`js/stand-in.js`) that follows the draft's model and syncs this browser's tabs over a `BroadcastChannel`. The session bar says which one is in use.
 
-The prototype Chromium v0.1.0 implements an earlier draft (`numPeers`, `tempochange`), so these tools need the extension or the stand-in until there's a new build. It's at https://bayl.es/tempo-sync-demo-builds/v0.1.0/Chromium-tempo-sync-macos-arm64.zip ([sha256](https://bayl.es/tempo-sync-demo-builds/v0.1.0/Chromium-tempo-sync-macos-arm64.zip.sha256)); the setup tab has the steps.
+The prototype Chromium v0.1.0 implements an earlier draft (`numPeers`, `tempochange`, one shared beat grid). `js/legacy.js` adapts it to the current draft, so every tool works on it too (the session bar says `browser v0.1`). It's at https://bayl.es/tempo-sync-demo-builds/v0.1.0/Chromium-tempo-sync-macos-arm64.zip ([sha256](https://bayl.es/tempo-sync-demo-builds/v0.1.0/Chromium-tempo-sync-macos-arm64.zip.sha256)); the setup tab has the steps.
 
 ## Layout
 
@@ -31,6 +31,7 @@ The prototype Chromium v0.1.0 implements an earlier draft (`numPeers`, `tempocha
 - `js/app.js`: the session bar, the tabs, and the log.
 - `js/hub.js`: one session per document, shared by every tool. Tools call `hub.onSession()`, `hub.connect()`, `hub.requestPlaying()` and `hub.setTempo()` rather than the API directly, so they work the same on the browser's API and on the stand-in.
 - `js/stand-in.js`: the API for browsers without it.
+- `js/legacy.js`: adapts the prototype Chromium v0.1's earlier-draft API to the current draft.
 - `js/tools/<tab>/index.js`: each tool, exporting `mount(panel, hub)`.
 
 ## Run it

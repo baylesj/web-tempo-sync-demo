@@ -14,6 +14,7 @@
 //   hub.log(message, tag)                 add a line to the page's log
 
 import { StandInTempoSession } from './stand-in.js';
+import { isLegacyApi, LegacySession } from './legacy.js';
 
 // Tools schedule audio up to about 0.25 s ahead (Strudel does), so a start or stop needs at
 // least this much notice; closer than this, it waits for the bar after.
@@ -21,7 +22,7 @@ const MIN_NOTICE = 0.3;
 
 class Hub extends EventTarget {
   session = null;
-  // 'browser' (built in), 'extension', or 'stand-in'.
+  // 'browser' (built in), 'browser v0.1' (the prototype build, adapted), 'extension', or 'stand-in'.
   source = null;
   quantum = 4;
   #connecting = null;
@@ -46,10 +47,14 @@ class Hub extends EventTarget {
     this.#connecting ??= (async () => {
       try {
         const options = { quantum: this.quantum };
-        const session = this.available
+        let session = this.available
           ? await navigator.tempoSync.requestSession(options)
           : await StandInTempoSession.requestSession(options);
         this.source = this.#apiSource;
+        if (this.source === 'browser' && isLegacyApi()) {
+          session = new LegacySession(session);
+          this.source = 'browser v0.1';
+        }
         this.#set(session);
         return session;
       } finally {
