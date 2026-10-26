@@ -71,8 +71,32 @@
       </nav>
 
       <div id="tab-home" class="tab-view" role="tabpanel">
+        <section class="split" aria-labelledby="home-docs-label">
+          <h2 class="label" id="home-docs-label"><span class="n">01</span>read</h2>
+          <div class="stack">
+            <nav class="docs" aria-label="The proposal">
+              <a href="/web-tempo-sync/"><b>Specification</b><span>The API and its algorithms</span></a>
+              <a href="/web-tempo-sync/explainer.html"><b>Explainer</b><span>Why, the use cases, and the design</span></a>
+              <a href="/web-tempo-sync/OBJECTIONS.html"><b>Objections</b><span>The "no"s we expect, and our answers</span></a>
+              <a href="/web-tempo-sync/security-privacy-questionnaire.html"><b>Security &amp; privacy</b><span>W3C self-review questionnaire</span></a>
+            </nav>
+          </div>
+        </section>
+
+        <section class="split" aria-labelledby="home-get-label">
+          <h2 class="label" id="home-get-label"><span class="n">02</span>get the api</h2>
+          <div class="stack">
+            <p class="soft">No browser ships Web Tempo Sync yet. Three ways to try it:</p>
+            <ul class="steps-list">
+              <li><strong>The extension, on stable Chrome</strong> (macOS): an extension and a small helper app that join Link sessions. <a href="/tempo-sync-demo-builds/extension-v0.2.0/web-tempo-sync-extension-0.2.0-macos.zip" download>Download it</a> (0.6 MB), then follow the <a href="#setup">install steps</a>.</li>
+              <li><strong>The prototype Chromium</strong> (macOS, Apple silicon): the API built into the browser. See <a href="#setup">setup</a>.</li>
+              <li><strong>The stand-in</strong>, in any browser: without the API, this page uses a stand-in that syncs only this browser's tabs. The status line says which one you're using.</li>
+            </ul>
+          </div>
+        </section>
+
         <section class="split" aria-labelledby="home-tools-label">
-          <h2 class="label" id="home-tools-label"><span class="n">01</span>play</h2>
+          <h2 class="label" id="home-tools-label"><span class="n">03</span>play</h2>
           <div class="stack">
             <nav class="docs" aria-label="Tools">
               <a href="#sampler"><b>Sampler</b><span>A sixteen-step drum pattern that starts on the bar line with everyone else</span></a>
@@ -85,30 +109,6 @@
               Each tool keeps playing when you switch tabs. <strong>New window</strong> opens the current tool on
               its own, to see separate pages sync too.
             </p>
-          </div>
-        </section>
-
-        <section class="split" aria-labelledby="home-get-label">
-          <h2 class="label" id="home-get-label"><span class="n">02</span>get the api</h2>
-          <div class="stack">
-            <p class="soft">No browser ships Web Tempo Sync yet. Three ways to try it:</p>
-            <ul class="steps-list">
-              <li><strong>The extension, on stable Chrome</strong> (macOS and Linux): an extension and a small helper app that join Link sessions. See its <a href="https://github.com/baylesj/tempo-sync/tree/main/extension">install steps</a>.</li>
-              <li><strong>The prototype Chromium</strong> (macOS, Apple silicon): the API built into the browser. See <a href="#setup">setup</a>.</li>
-              <li><strong>The stand-in</strong>, in any browser: without the API, this page uses a stand-in that syncs only this browser's tabs. The status line says which one you're using.</li>
-            </ul>
-          </div>
-        </section>
-
-        <section class="split" aria-labelledby="home-docs-label">
-          <h2 class="label" id="home-docs-label"><span class="n">03</span>read</h2>
-          <div class="stack">
-            <nav class="docs" aria-label="The proposal">
-              <a href="/web-tempo-sync/"><b>Specification</b><span>The API and its algorithms</span></a>
-              <a href="/web-tempo-sync/explainer.html"><b>Explainer</b><span>Why, the use cases, and the design</span></a>
-              <a href="/web-tempo-sync/OBJECTIONS.html"><b>Objections</b><span>The "no"s we expect, and our answers</span></a>
-              <a href="/web-tempo-sync/security-privacy-questionnaire.html"><b>Security &amp; privacy</b><span>W3C self-review questionnaire</span></a>
-            </nav>
           </div>
         </section>
       </div>
@@ -196,14 +196,25 @@
           <h2 class="label" id="setup-extension-label"><span class="n">02</span>stable chrome</h2>
           <div class="stack">
             <p class="soft">
-              The <a href="https://github.com/baylesj/tempo-sync/tree/main/extension">Web Tempo Sync extension</a>
-              gives stable Chrome <code>navigator.tempoSync</code>, using a small helper app that joins Link sessions.
+              The Web Tempo Sync extension gives stable Chrome <code>navigator.tempoSync</code>, using a small helper
+              app that joins Link sessions.
             </p>
-            <pre class="code-snippet"><code data-lang="sh">git clone https://github.com/baylesj/tempo-sync
-tempo-sync/extension/install-host.sh</code></pre>
+            <div class="actions">
+              <a class="btn" href="/tempo-sync-demo-builds/extension-v0.2.0/web-tempo-sync-extension-0.2.0-macos.zip" download>Download extension 0.2.0</a>
+              <span class="help">macOS, Apple silicon and Intel · 0.6 MB ·
+                <a href="/tempo-sync-demo-builds/extension-v0.2.0/web-tempo-sync-extension-0.2.0-macos.zip.sha256">sha256</a></span>
+            </div>
+            <p class="help">
+              Unzip it, then run these in Terminal from the unzipped folder. The helper isn't signed, so
+              <code>xattr -cr</code> clears macOS's quarantine flag first. The script registers the helper with
+              Chrome, so leave the folder where it is.
+            </p>
+            <pre class="code-snippet"><code data-lang="sh">xattr -cr .
+extension/install-host.sh</code></pre>
             <ol class="steps-list">
-              <li>Open <code>chrome://extensions</code>, turn on <strong>Developer mode</strong>, choose <strong>Load unpacked</strong>, and pick <code>tempo-sync/extension</code>.</li>
+              <li>Open <code>chrome://extensions</code>, turn on <strong>Developer mode</strong>, choose <strong>Load unpacked</strong>, and pick the <code>extension</code> folder inside it.</li>
               <li>Reload this page and click <strong>Connect</strong>, then <strong>Allow</strong>. The status line shows <code>extension</code>.</li>
+              <li>To remove it: <code>extension/install-host.sh --uninstall</code>, then remove the extension in <code>chrome://extensions</code>.</li>
             </ol>
           </div>
         </section>
