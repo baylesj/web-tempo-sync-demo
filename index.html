@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Web Tempo Sync</title>
-    <meta name="description" content="A page that keeps tempo with Ableton Link apps through the Web Tempo Sync API." />
+    <meta name="description" content="Web pages that play in time with Ableton Link apps, hardware and each other, through the proposed Web Tempo Sync API." />
     <link rel="icon" type="image/svg+xml" href="https://cdn.jsdelivr.net/gh/baylesj/bayl.es-style@v1.12.2/icons/home.svg" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500&family=Schibsted+Grotesk:wght@400..700&family=Fira+Code:wght@400;500&display=swap" />
@@ -16,178 +16,214 @@
     <main class="wide">
       <header class="top">
         <div>
-          <span class="prompt"><span class="u">guest</span>@eopsin:<span class="p">~/tempo-sync-demo</span></span>
+          <span class="prompt"><span class="u">guest</span>@eopsin:<span class="p">~/tempo-sync</span></span>
           <h1 class="mark">tempo</h1>
         </div>
         <button class="theme-toggle" type="button"></button>
       </header>
 
       <p class="lede">
-        Web Tempo Sync is a proposed web API that lets a page keep tempo, beat and play state with Ableton Link
-        apps and hardware on the local network. This page is its home and demo: try it below, or read the
-        proposal.
+        Web Tempo Sync is a proposed web API that lets a page play in time with music apps and hardware on the
+        local network, and with other pages: shared tempo, bar phase and start/stop, with nothing to install.
+        Every tool here shares one session. Start one, switch to another, and they stay in time with each other
+        and with Ableton Live.
       </p>
 
-      <nav class="docs" aria-label="The proposal">
-        <a href="/web-tempo-sync/"><b>Specification</b><span>Draft CG report: the API and its algorithms</span></a>
-        <a href="/web-tempo-sync/explainer.html"><b>Explainer</b><span>The problem, use cases and design choices</span></a>
-        <a href="/web-tempo-sync/security-privacy-questionnaire.html"><b>Security &amp; privacy</b><span>W3C self-review questionnaire</span></a>
-        <a href="#setup"><b>Prototype Chromium</b><span>v0.1.0 for macOS, and how to connect Live and Move</span></a>
-      </nav>
-
-      <p class="help">
-        Browsers without the API get a stand-in session that only this page's tabs share.
-      </p>
+      <section class="session-bar" aria-label="Session">
+        <div class="sb-status">
+          <span id="status-dot" class="dot"></span>
+          <span id="status-text">Not connected</span>
+          <span id="api-text" class="mono soft"></span>
+        </div>
+        <div id="beat-dots" class="beat-dots" aria-hidden="true"></div>
+        <div class="sb-tempo">
+          <label for="tempo-input" class="sub">bpm</label>
+          <input id="tempo-input" class="tempo-number" type="number" min="60" max="200" step="0.1" value="120.0" aria-label="Tempo in BPM" />
+          <input id="tempo-slider" type="range" min="60" max="200" step="0.1" value="120.0" aria-label="Tempo" />
+        </div>
+        <div class="sb-quantum">
+          <label for="quantum-select" class="sub">bar</label>
+          <select id="quantum-select" aria-label="Quantum, in beats">
+            <option value="2">2 beats</option>
+            <option value="3">3 beats</option>
+            <option value="4" selected>4 beats</option>
+            <option value="8">8 beats</option>
+          </select>
+        </div>
+        <div class="actions">
+          <button id="play-stop-btn" type="button" class="quiet" disabled>Play</button>
+          <button id="connect-btn" type="button">Connect</button>
+          <button id="open-window-btn" type="button" class="quiet" title="Open this tab in its own window">New window</button>
+        </div>
+      </section>
 
       <nav class="view-tabs" aria-label="View">
         <div class="seg" role="tablist">
-          <button type="button" class="on" data-tab="sequencer" role="tab" aria-controls="tab-sequencer" aria-selected="true">sequencer</button>
-          <button type="button" data-tab="setup" role="tab" aria-controls="tab-setup" aria-selected="false">setup &amp; hardware</button>
-          <button type="button" data-tab="api" role="tab" aria-controls="tab-api" aria-selected="false">api &amp; code</button>
+          <button type="button" class="on" data-tab="home" role="tab" aria-controls="tab-home" aria-selected="true">home</button>
+          <button type="button" data-tab="sampler" role="tab" aria-controls="tab-sampler" aria-selected="false">sampler</button>
+          <button type="button" data-tab="strudel" role="tab" aria-controls="tab-strudel" aria-selected="false">strudel</button>
+          <button type="button" data-tab="hydra" role="tab" aria-controls="tab-hydra" aria-selected="false">hydra</button>
+          <button type="button" data-tab="tone" role="tab" aria-controls="tab-tone" aria-selected="false">tone.js</button>
+          <button type="button" data-tab="arpeggios" role="tab" aria-controls="tab-arpeggios" aria-selected="false">arpeggios</button>
+          <button type="button" data-tab="setup" role="tab" aria-controls="tab-setup" aria-selected="false">setup</button>
+          <button type="button" data-tab="api" role="tab" aria-controls="tab-api" aria-selected="false">api</button>
         </div>
       </nav>
 
-      <div id="tab-sequencer" class="tab-view" role="tabpanel">
-      <section class="split" aria-labelledby="session-label">
-        <h2 class="label" id="session-label"><span class="n">01</span>session</h2>
-        <div class="session">
+      <div id="tab-home" class="tab-view" role="tabpanel">
+        <section class="split" aria-labelledby="home-tools-label">
+          <h2 class="label" id="home-tools-label"><span class="n">01</span>play</h2>
           <div class="stack">
-            <div class="rows">
-              <div class="kv">
-                <span>status</span>
-                <span><span id="status-dot" class="dot"></span><span id="status-text">Not connected</span></span>
-              </div>
-              <div class="kv">
-                <span>api</span>
-                <span id="api-text" class="mono">–</span>
-              </div>
-              <div class="kv">
-                <span>peers</span>
-                <span><span id="peer-count" class="mono num">0</span></span>
-              </div>
-            </div>
-
-            <div class="actions">
-              <button id="connect-btn" type="button">Connect</button>
-              <button id="play-stop-btn" type="button" class="quiet" disabled>Play</button>
-              <button id="open-tab-btn" type="button" class="quiet" hidden>Open 2nd tab</button>
-            </div>
-            <p id="standin-note" class="help" hidden>
-              Stand-in mode syncs tabs in this browser window over <code>BroadcastChannel</code>. Open a second
-              tab to hear two patterns lock beat and bar phase, or see
-              <button type="button" class="link-btn" id="go-setup-btn">setup &amp; hardware</button> to connect to
-              Ableton Live and Ableton Move.
+            <nav class="docs" aria-label="Tools">
+              <a href="#sampler"><b>Sampler</b><span>A sixteen-step drum pattern that starts on the bar line with everyone else</span></a>
+              <a href="#strudel"><b>Strudel</b><span>Live-code patterns in the browser, in time with Live</span></a>
+              <a href="#hydra"><b>Hydra</b><span>Live-coded visuals that move on the beat</span></a>
+              <a href="#tone"><b>Tone.js</b><span>An instrument built on Tone.js, whose Transport follows the session</span></a>
+              <a href="#arpeggios"><b>Arpeggios</b><span>Chrome Music Lab's arpeggiator, playing along</span></a>
+            </nav>
+            <p class="help">
+              Each tool keeps playing when you switch tabs. <strong>New window</strong> opens the current tool on
+              its own, to see separate pages sync too.
             </p>
+          </div>
+        </section>
 
-            <div>
-              <div class="field-head">
-                <label for="tempo-slider">tempo, bpm</label>
-                <input id="tempo-input" class="tempo-number" type="number" min="60" max="200" step="0.1" value="120.0" aria-label="Tempo in BPM" />
+        <section class="split" aria-labelledby="home-get-label">
+          <h2 class="label" id="home-get-label"><span class="n">02</span>get the api</h2>
+          <div class="stack">
+            <p class="soft">No browser ships Web Tempo Sync yet. Three ways to try it:</p>
+            <ul class="steps-list">
+              <li><strong>The extension, on stable Chrome</strong> (macOS and Linux): an extension and a small helper app that join Link sessions. See its <a href="https://github.com/baylesj/tempo-sync/tree/main/extension">install steps</a>.</li>
+              <li><strong>The prototype Chromium</strong> (macOS, Apple silicon): the API built into the browser. See <a href="#setup">setup</a>.</li>
+              <li><strong>The stand-in</strong>, in any browser: without the API, this page uses a stand-in that syncs only this browser's tabs. The status line says which one you're using.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="split" aria-labelledby="home-docs-label">
+          <h2 class="label" id="home-docs-label"><span class="n">03</span>read</h2>
+          <div class="stack">
+            <nav class="docs" aria-label="The proposal">
+              <a href="/web-tempo-sync/"><b>Specification</b><span>The API and its algorithms</span></a>
+              <a href="/web-tempo-sync/explainer.html"><b>Explainer</b><span>Why, the use cases, and the design</span></a>
+              <a href="/web-tempo-sync/OBJECTIONS.html"><b>Objections</b><span>The "no"s we expect, and our answers</span></a>
+              <a href="/web-tempo-sync/security-privacy-questionnaire.html"><b>Security &amp; privacy</b><span>W3C self-review questionnaire</span></a>
+            </nav>
+          </div>
+        </section>
+      </div>
+
+      <div id="tab-sampler" class="tab-view" role="tabpanel" hidden>
+        <section class="split" aria-labelledby="sampler-clock-label">
+          <h2 class="label" id="sampler-clock-label"><span class="n">01</span>clock</h2>
+          <div class="session">
+            <div class="stack">
+              <div>
+                <label class="switch">
+                  <input id="metronome-toggle" type="checkbox" />
+                  <span class="track" aria-hidden="true"></span>
+                  <span>metronome</span>
+                </label>
+                <label for="metronome-volume" class="sub">metronome volume</label>
+                <input id="metronome-volume" type="range" min="0" max="1" step="0.05" value="0.6" />
+                <p class="help">Clicks on every beat while playing, higher on the first beat of the bar.</p>
               </div>
-              <input id="tempo-slider" type="range" min="60" max="200" step="0.1" value="120.0" />
-            </div>
-
-            <div>
-              <label for="quantum-select">quantum</label>
-              <select id="quantum-select">
-                <option value="1">1 beat</option>
-                <option value="2">2 beats</option>
-                <option value="4" selected>4 beats</option>
-                <option value="8">8 beats</option>
-              </select>
               <p class="help">
-                Play and Stop take effect at the start of the next quantum, so every peer starts on the same
-                beat; the button counts down until then. Space does the same as the button. Tempo changes apply
-                at once. Changing the quantum rejoins the session.
+                Play and Stop wait for the next bar line, so everyone starts on the same beat; the button counts
+                down until then. Space does the same.
               </p>
             </div>
+            <canvas id="beat-ring-canvas" aria-label="Beat ring: position in the current bar" role="img"></canvas>
+          </div>
+        </section>
 
-            <div>
-              <label class="switch">
-                <input id="metronome-toggle" type="checkbox" />
-                <span class="track" aria-hidden="true"></span>
-                <span>metronome</span>
-              </label>
-              <label for="metronome-volume" class="sub">metronome volume</label>
-              <input id="metronome-volume" type="range" min="0" max="1" step="0.05" value="0.6" />
-              <p class="help">Clicks on every beat while playing, higher on the first beat of the quantum.</p>
+        <section class="split" aria-labelledby="pattern-label">
+          <h2 class="label" id="pattern-label"><span class="n">02</span>pattern</h2>
+          <div class="stack">
+            <div id="sampler-container"></div>
+            <p class="help">
+              Sixteen steps over four beats. Each row plays a synthesized drum until you load a WAV or MP3 into it
+              with its sample button.
+            </p>
+          </div>
+        </section>
+
+        <section class="split" aria-labelledby="latency-label">
+          <h2 class="label" id="latency-label"><span class="n">03</span>latency</h2>
+          <div class="stack">
+            <label class="switch">
+              <input id="latency-toggle" type="checkbox" />
+              <span class="track" aria-hidden="true"></span>
+              <span>measure output latency</span>
+            </label>
+            <p class="soft">
+              Plays a full-volume click on every beat while the session plays, higher on the first beat of the
+              bar. Record this browser's output and Live's metronome together in a DAW; the gap between the two
+              clicks is how late this browser's audio comes out.
+            </p>
+            <div class="rows">
+              <div class="kv"><span>base latency</span><span id="base-latency-val" class="mono">–</span></div>
+              <div class="kv"><span>output latency</span><span id="output-latency-val" class="mono">–</span></div>
+              <div class="kv"><span>sample rate</span><span id="sample-rate-val" class="mono">–</span></div>
             </div>
           </div>
-
-          <canvas id="beat-ring-canvas" aria-label="Beat ring: position in the current quantum" role="img"></canvas>
-        </div>
-      </section>
-
-      <section class="split" aria-labelledby="pattern-label">
-        <h2 class="label" id="pattern-label"><span class="n">02</span>pattern</h2>
-        <div class="stack">
-          <div id="sampler-container"></div>
-          <p class="help">
-            Sixteen steps over four beats. Each row plays a synthesized drum until you load a WAV or MP3 into it
-            with its sample button.
-          </p>
-        </div>
-      </section>
-
-      <section class="split" aria-labelledby="latency-label">
-        <h2 class="label" id="latency-label"><span class="n">03</span>latency</h2>
-        <div class="stack">
-          <label class="switch">
-            <input id="latency-toggle" type="checkbox" />
-            <span class="track" aria-hidden="true"></span>
-            <span>measure output latency</span>
-          </label>
-          <p class="soft">
-            Plays a full-volume click on every beat while the session plays, higher on the first beat of the
-            quantum. Record this browser's output and Live's metronome together in a DAW; the gap between the
-            two clicks is how late this browser's audio comes out.
-          </p>
-          <div class="rows">
-            <div class="kv"><span>base latency</span><span id="base-latency-val" class="mono">–</span></div>
-            <div class="kv"><span>output latency</span><span id="output-latency-val" class="mono">–</span></div>
-            <div class="kv"><span>sample rate</span><span id="sample-rate-val" class="mono">–</span></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="split" aria-labelledby="log-label">
-        <h2 class="label" id="log-label"><span class="n">04</span>log</h2>
-        <div class="stack">
-          <ol id="event-log" class="log"></ol>
-          <button id="clear-log-btn" type="button" class="quiet">Clear</button>
-        </div>
-      </section>
+        </section>
       </div>
+
+      <div id="tab-strudel" class="tab-view tool-view" role="tabpanel" data-tool="strudel" hidden></div>
+      <div id="tab-hydra" class="tab-view tool-view" role="tabpanel" data-tool="hydra" hidden></div>
+      <div id="tab-tone" class="tab-view tool-view" role="tabpanel" data-tool="tone" hidden></div>
+      <div id="tab-arpeggios" class="tab-view tool-view" role="tabpanel" data-tool="arpeggios" hidden></div>
 
       <div id="tab-setup" class="tab-view" role="tabpanel" hidden>
         <section class="split" aria-labelledby="setup-tabs-label">
           <h2 class="label" id="setup-tabs-label"><span class="n">01</span>two tabs</h2>
           <div class="stack">
             <p class="soft">
-              In stock browsers where <code>navigator.tempoSync</code> is not present, the page uses a
-              <code>BroadcastChannel</code> stand-in with the same API surface. No custom browser build is needed.
+              In any browser, the stand-in syncs this browser's tabs with each other over a
+              <code>BroadcastChannel</code>. No custom browser build is needed.
             </p>
             <ol class="steps-list">
-              <li>Click <strong>Connect</strong> in the <strong>sequencer</strong> view (the <code>api</code> row shows <code>stand-in (BroadcastChannel)</code>).</li>
-              <li>Click <strong>Open 2nd tab</strong> (or open this URL in another tab and click <strong>Connect</strong>).</li>
-              <li>Pick different patterns in each tab (for example, <em>four on the floor</em> in tab 1 and <em>syncopated</em> in tab 2) and press <strong>Play</strong> or the space bar.</li>
-              <li>Start and stop wait for the next quantum downbeat, and moving the tempo slider updates both tabs at once.</li>
+              <li>Click <strong>Connect</strong>. The status line shows <code>stand-in</code>.</li>
+              <li>Click <strong>New window</strong>, and <strong>Connect</strong> there too. Both show that they're playing along.</li>
+              <li>Pick different patterns in the <strong>sampler</strong> in each window and press <strong>Play</strong> or the space bar.</li>
+              <li>Start and stop wait for the next bar line, and the tempo slider moves both windows at once.</li>
+            </ol>
+          </div>
+        </section>
+
+        <section class="split" aria-labelledby="setup-extension-label">
+          <h2 class="label" id="setup-extension-label"><span class="n">02</span>stable chrome</h2>
+          <div class="stack">
+            <p class="soft">
+              The <a href="https://github.com/baylesj/tempo-sync/tree/main/extension">Web Tempo Sync extension</a>
+              gives stable Chrome <code>navigator.tempoSync</code>, using a small helper app that joins Link sessions.
+            </p>
+            <pre class="code-snippet"><code data-lang="sh">git clone https://github.com/baylesj/tempo-sync
+tempo-sync/extension/install-host.sh</code></pre>
+            <ol class="steps-list">
+              <li>Open <code>chrome://extensions</code>, turn on <strong>Developer mode</strong>, choose <strong>Load unpacked</strong>, and pick <code>tempo-sync/extension</code>.</li>
+              <li>Reload this page and click <strong>Connect</strong>, then <strong>Allow</strong>. The status line shows <code>extension</code>.</li>
             </ol>
           </div>
         </section>
 
         <section class="split" aria-labelledby="setup-live-label">
-          <h2 class="label" id="setup-live-label"><span class="n">02</span>ableton live</h2>
+          <h2 class="label" id="setup-live-label"><span class="n">03</span>ableton live</h2>
           <div class="stack">
             <p class="soft">
-              In the prototype Chromium build, the browser process joins the local Ableton Link UDP multicast group
-              (<code>224.76.78.75:20808</code>) and syncs with Ableton Live on the same laptop or local network.
+              In the prototype Chromium build, the browser itself joins Link sessions and syncs with Ableton Live
+              on the same laptop or local network.
             </p>
             <div class="actions">
               <a class="btn" href="/tempo-sync-demo-builds/v0.1.0/Chromium-tempo-sync-macos-arm64.zip" download>Download Chromium v0.1.0</a>
               <span class="help">macOS, Apple silicon · 232 MB ·
                 <a href="/tempo-sync-demo-builds/v0.1.0/Chromium-tempo-sync-macos-arm64.zip.sha256">sha256</a></span>
             </div>
+            <p class="help">
+              v0.1.0 implements an earlier draft of the API (<code>numPeers</code>, <code>tempochange</code>), so
+              these tools need the extension or the stand-in until a new build is out.
+            </p>
             <p class="help">
               Unzip it, then run the commands below from the same folder. The build isn't signed, so
               <code>xattr -cr</code> clears macOS's quarantine flag first; without it, Gatekeeper won't open it.
@@ -196,17 +232,17 @@
 ./Chromium.app/Contents/MacOS/Chromium \
   --enable-blink-features=TempoSync \
   --tempo-sync-engine=rust \
-  "https://bayl.es/tempo-sync-demo/?autoconnect=1"</code></pre>
+  "https://bayl.es/tempo-sync/?autoconnect=1"</code></pre>
             <ol class="steps-list">
               <li>In Ableton Live 12, open <strong>Settings &gt; Link, Tempo &amp; MIDI</strong> and enable <strong>Show Link Toggle</strong> and <strong>Start/Stop Sync</strong>.</li>
               <li>Click the <strong>Link</strong> button in the top-left corner of Live.</li>
-              <li>In Chromium, check that <code>api</code> reads <code>navigator.tempoSync</code> and <code>peers</code> increments.</li>
+              <li>The status line here shows that you're playing along.</li>
             </ol>
           </div>
         </section>
 
         <section class="split" aria-labelledby="setup-move-label">
-          <h2 class="label" id="setup-move-label"><span class="n">03</span>ableton move</h2>
+          <h2 class="label" id="setup-move-label"><span class="n">04</span>ableton move</h2>
           <div class="stack">
             <p class="soft">
               You do not need a Wi-Fi router to sync with an Ableton Move on the road. In Standalone Mode, Move
@@ -215,24 +251,21 @@
             </p>
             <ol class="steps-list">
               <li>On Ableton Move, press <code>Shift + Step 2</code> (Setup), set <strong>Mode: Standalone</strong> (not Control Live), and turn <strong>Link: On</strong> and <strong>Sync Start/Stop: On</strong>.</li>
-              <li>Plug Move's <strong>USB-C port</strong> (next to the power port, not the USB-A port) directly into your MacBook Pro.</li>
-              <li>Launch the prototype Chromium build after plugging Move in so the Rust engine binds to the USB network interface alongside <code>en0</code> and <code>lo0</code>.</li>
-              <li>Chromium, Ableton Live, and Ableton Move discover each other and lock tempo, beat phase, and start/stop over USB.</li>
+              <li>Plug Move's <strong>USB-C port</strong> (next to the power port, not the USB-A port) directly into your Mac.</li>
+              <li>Start the browser after plugging Move in, so it finds the USB network interface alongside <code>en0</code> and <code>lo0</code>.</li>
+              <li>The browser, Ableton Live and Ableton Move discover each other and lock tempo, beat phase and start/stop over USB.</li>
             </ol>
           </div>
         </section>
 
         <section class="split" aria-labelledby="setup-lan-label">
-          <h2 class="label" id="setup-lan-label"><span class="n">04</span>wi-fi &amp; latency</h2>
+          <h2 class="label" id="setup-lan-label"><span class="n">05</span>wi-fi &amp; latency</h2>
           <div class="stack">
-            <p class="soft">
-              To sync wirelessly across multiple laptops, iPads, or hardware units, or to calibrate browser output
-              latency:
-            </p>
             <ul class="steps-list">
-              <li><strong>Shared Wi-Fi or phone hotspot:</strong> Connect devices to a local network or phone hotspot that allows peer-to-peer UDP multicast (client isolation off).</li>
-              <li><strong>Turn off corporate VPNs:</strong> VPN tunnels often intercept or drop multicast packets on <code>224.76.78.75:20808</code>.</li>
-              <li><strong>Measure audio output offset:</strong> Enable <strong>measure output latency</strong> in section <code>03 latency</code> of the sequencer view and record this browser's output alongside Live's metronome in a DAW.</li>
+              <li><strong>Shared Wi-Fi or phone hotspot:</strong> Connect devices to a local network or hotspot that allows peer-to-peer UDP multicast (client isolation off).</li>
+              <li><strong>Turn off corporate VPNs:</strong> VPN tunnels often intercept or drop multicast packets.</li>
+              <li><strong>macOS local network permission:</strong> The first time the browser joins, macOS may ask to let it find devices on your local network. Allow it, or it sees no one.</li>
+              <li><strong>Measure audio output offset:</strong> Turn on <strong>measure output latency</strong> in the sampler and record this browser's output alongside Live's metronome in a DAW.</li>
             </ul>
           </div>
         </section>
@@ -243,15 +276,11 @@
           <h2 class="label" id="api-audio-label"><span class="n">01</span>audio clock</h2>
           <div class="stack">
             <p class="soft">
-              Passing an <code>AudioContext</code> to <code>session.captureState(audioContext)</code> projects the
-              shared session timeline directly into <code>AudioContext.currentTime</code> seconds, including output
-              latency compensation:
+              Passing an <code>AudioContext</code> to <code>session.captureState(audioContext)</code> puts the
+              snapshot's times in <code>AudioContext.currentTime</code>, at the time the audio leaves the speakers:
             </p>
             <pre class="code-snippet"><code data-lang="js">const audioContext = new AudioContext();
-const session = await navigator.tempoSync.requestSession({
-  quantum: 4,
-  startStopSync: true,
-});
+const session = await navigator.tempoSync.requestSession({ quantum: 4 });
 
 let nextStep = null; // the next 16th-note step, in beats, not yet scheduled
 
@@ -261,15 +290,12 @@ function scheduleLookahead() {
   const state = session.captureState(audioContext);
   const now = audioContext.currentTime;
   const horizon = now + 0.100; // 100 ms lookahead window
-  const quantum = session.quantum;
 
   if (nextStep === null) {
-    nextStep = Math.ceil(state.beatAtTime(now, quantum) * 4) / 4;
+    nextStep = Math.ceil(state.beatAtTime(now) * 4) / 4;
   }
-  const endBeat = state.beatAtTime(horizon, quantum);
-
-  for (; nextStep &lt; endBeat; nextStep += 0.25) {
-    triggerStepAtTime(nextStep, state.timeAtBeat(nextStep, quantum));
+  for (; state.timeAtBeat(nextStep) &lt; horizon; nextStep += 0.25) {
+    triggerStepAtTime(nextStep, state.timeAtBeat(nextStep));
   }
 }
 
@@ -281,28 +307,29 @@ setInterval(scheduleLookahead, 25);</code></pre>
           <h2 class="label" id="api-transport-label"><span class="n">02</span>transport &amp; ui</h2>
           <div class="stack">
             <p class="soft">
-              Calling <code>session.captureState()</code> with no arguments uses <code>performance.now() / 1000</code>
-              for <code>requestAnimationFrame</code> visuals and transport countdowns:
+              Participants share bar phase, not beat numbers. <code>requestBeatAtTime()</code> starts this page's
+              beat 0 on the next bar line without moving anyone else's. With no context,
+              <code>captureState()</code> uses <code>performance.now() / 1000</code>, for visuals:
             </p>
-            <pre class="code-snippet"><code data-lang="js">// Quantize Play/Stop to the next quantum boundary
-function toggleQuantizedPlay() {
+            <pre class="code-snippet"><code data-lang="js">// Start a loop on the next bar line, and the transport with it.
+function startOnNextBar() {
   const state = session.captureState(audioContext);
-  const now = audioContext.currentTime;
-  const quantum = session.quantum;
-  const nextBar = (Math.floor(state.beatAtTime(now, quantum) / quantum) + 1) * quantum;
-  const at = state.timeAtBeat(nextBar, quantum);
-
-  state.setIsPlaying(!state.isPlaying, at);
+  state.requestBeatAtTime(0, audioContext.currentTime);
+  if (!state.isPlaying) {
+    state.setIsPlaying(true, state.timeAtBeat(0));
+  }
   session.commitState(state);
 }
 
 // 60 fps phase ring
 function renderLoop() {
   const state = session.captureState();
-  const phase = state.phaseAtTime(performance.now() / 1000, session.quantum);
-  drawBeatRing(phase, state.tempo, state.isPlaying);
+  drawBeatRing(state.phaseAtTime(performance.now() / 1000), state.tempo, state.isPlaying);
   requestAnimationFrame(renderLoop);
-}</code></pre>
+}
+
+// "Playing along with Live", or not
+session.addEventListener("peerschange", () => showStatus(session.hasPeers));</code></pre>
           </div>
         </section>
 
@@ -310,12 +337,12 @@ function renderLoop() {
           <h2 class="label" id="api-webidl-label"><span class="n">03</span>webidl</h2>
           <div class="stack">
             <p class="soft">
-              The browser owns UDP multicast sockets, peer discovery, and clock-offset filtering in the browser
-              process. Pages only observe beat/phase math and peer counts:
+              The browser owns the network and the clock synchronization. Pages see only the timeline, and one
+              bit about everyone else: whether anyone is playing along.
             </p>
-            <pre class="code-snippet"><code data-lang="webidl">[SecureContext, Exposed=Window]
+            <pre class="code-snippet"><code data-lang="webidl">[SecureContext]
 partial interface Navigator {
-  [SameObject] readonly attribute TempoSync tempoSync;
+  readonly attribute TempoSync tempoSync;
 };
 
 [SecureContext, Exposed=Window]
@@ -324,47 +351,47 @@ interface TempoSync {
 };
 
 dictionary TempoSessionOptions {
-  double quantum = 4.0;
-  boolean startStopSync = false;
+  double quantum = 4;
 };
 
 [SecureContext, Exposed=Window]
 interface TempoSession : EventTarget {
-  readonly attribute unsigned long numPeers;
+  readonly attribute boolean hasPeers;
   readonly attribute double quantum;
-  readonly attribute boolean isStartStopSyncEnabled;
-
-  TempoSessionState captureState(optional BaseAudioContext? audioContext = null);
+  TempoSessionState captureState(optional BaseAudioContext context);
   undefined commitState(TempoSessionState state);
   undefined close();
-
-  attribute EventHandler onnumpeerschange;
-  attribute EventHandler ontempochange;
+  attribute EventHandler onpeerschange;
+  attribute EventHandler ontimelinechange;
   attribute EventHandler onplayingchange;
 };
 
-[SecureContext, Exposed=Window]
+[SecureContext, Exposed=(Window,Worker,AudioWorklet), Serializable]
 interface TempoSessionState {
   readonly attribute double tempo;
-  readonly attribute boolean isPlaying;
-
-  double beatAtTime(double time, double quantum);
-  double phaseAtTime(double time, double quantum);
-  double timeAtBeat(double beat, double quantum);
-  readonly attribute double timeForIsPlaying;
-
   undefined setTempo(double bpm, double atTime);
-  undefined requestBeatAtTime(double beat, double time, double quantum);
-  undefined forceBeatAtTime(double beat, double time, double quantum);
-  undefined setIsPlaying(boolean isPlaying, double atTime);
-  undefined requestBeatAtStartPlayingTime(double beat, double quantum);
+  double beatAtTime(double time, optional double quantum);
+  double phaseAtTime(double time, optional double quantum);
+  double timeAtBeat(double beat, optional double quantum);
+  undefined requestBeatAtTime(double beat, double time, optional double quantum);
+  undefined forceBeatAtTime(double beat, double time, optional double quantum);
+  readonly attribute boolean isPlaying;
+  readonly attribute double timeForIsPlaying;
+  undefined setIsPlaying(boolean playing, double atTime);
 };</code></pre>
           </div>
         </section>
       </div>
 
+      <details class="log-panel">
+        <summary>log</summary>
+        <ol id="event-log" class="log"></ol>
+        <button id="clear-log-btn" type="button" class="quiet">Clear</button>
+      </details>
+
       <footer>
         <span><a href="https://bayl.es">bayl.es</a></span>
+        <a href="https://github.com/baylesj/web-tempo-sync-demo">source (AGPL-3.0)</a>
         <a href="https://style.bayl.es">style.bayl.es</a>
       </footer>
     </main>

@@ -393,12 +393,8 @@ export class AudioEngine {
         break;
       }
 
-      // Check if this beat is within active playback time
-      const isStartStopSync = Boolean(this.#session.startStopSync);
-      const isPlaying = state.isPlaying;
-      const isAfterPlayStart = beatTime >= (state.timeForIsPlaying || 0) - 0.005;
-
-      const shouldPlayBeats = !isStartStopSync || (isPlaying && isAfterPlayStart);
+      // Play only while the shared transport plays, from its start time on.
+      const shouldPlayBeats = state.isPlaying && beatTime >= state.timeForIsPlaying - 0.005;
 
       if (shouldPlayBeats && beatTime >= tCurrent - 0.005) {
         // Step in 16-step pattern (16 steps = 4 beats)

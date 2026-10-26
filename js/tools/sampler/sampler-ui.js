@@ -195,7 +195,7 @@ export class SamplerUI {
       return;
     }
     const vis = this.#session.captureState();
-    if (this.#session.startStopSync && !vis.isPlaying) {
+    if (!vis.isPlaying) {
       if (this.#lastPlayheadStep !== -1) {
         this.#setPlayhead(this.#lastPlayheadStep, false);
         this.#lastPlayheadStep = -1;

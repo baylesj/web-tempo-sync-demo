@@ -428,3 +428,101 @@ button.step.now {
   font-size: 14px;
   color: var(--soft);
 }
+
+/* Session bar: one session for the whole page, above the tabs, so it stays put while tools
+   change underneath it. Sticks to the top when the page scrolls. */
+.session-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  align-items: center;
+  margin: 18px 0 22px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--ground);
+}
+
+.session-bar .sb-status {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 13em;
+}
+
+.session-bar .sb-tempo,
+.session-bar .sb-quantum {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.session-bar label.sub {
+  margin: 0;
+}
+
+.session-bar .sb-tempo input[type="range"] {
+  width: 160px;
+}
+
+.session-bar .actions {
+  margin-left: auto;
+}
+
+/* One dot per beat of the bar; the current beat lights, in the signature colour while playing. */
+.beat-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.beat-dots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+}
+
+.beat-dots span.on {
+  background: var(--comment);
+  border-color: var(--comment);
+}
+
+.beat-dots.playing span.on {
+  background: var(--sig-fill);
+  border-color: var(--sig-fill);
+}
+
+.beat-dots span:first-child {
+  border-color: var(--soft);
+}
+
+@media (width <= 760px) {
+  .session-bar .actions {
+    margin-left: 0;
+  }
+
+  .session-bar .sb-tempo input[type="range"] {
+    width: 120px;
+  }
+}
+
+/* The log, out of the way under every tab. */
+.log-panel {
+  margin: 28px 0 0;
+}
+
+.log-panel summary {
+  cursor: pointer;
+  color: var(--soft);
+}
+
+.log-panel .log {
+  margin: 10px 0;
+}
+
+.view-tabs .seg {
+  flex-wrap: wrap;
+}

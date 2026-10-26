@@ -1,453 +1,305 @@
-// Page controller: session, transport, metronome, pattern, latency mode and the event log.
+// Page controller: the session bar, the tabs, and the log. Each tool tab is a module that
+// loads the first time it's shown and keeps running when hidden; they share the hub's session.
 
-import { requestTempoSession } from './fake-session.js';
-import { AudioEngine } from './audio.js';
-import { BeatRing } from './beat-ring.js';
-import { SamplerUI } from './sampler-ui.js';
+import { hub } from './hub.js';
 import { highlightAll } from './highlight.js';
 
-const STORE_PREFIX = 'tempo-sync-demo.';
 const TEMPO_MIN = 60;
 const TEMPO_MAX = 200;
+const DEFAULT_TAB = 'home';
 
-// localStorage that never throws (private mode, blocked storage).
-const store = {
-  get(key, fallback = null) {
-    try {
-      const raw = localStorage.getItem(STORE_PREFIX + key);
-      return raw === null ? fallback : JSON.parse(raw);
-    } catch {
-      return fallback;
-    }
-  },
-  set(key, value) {
-    try {
-      localStorage.setItem(STORE_PREFIX + key, JSON.stringify(value));
-    } catch {
-      /* storage blocked: the setting lasts until reload */
-    }
-  },
+// Each exports mount(panel, hub).
+const TOOLS = {
+  sampler: () => import('./tools/sampler/index.js'),
+  strudel: () => import('./tools/strudel/index.js'),
+  hydra: () => import('./tools/hydra/index.js'),
+  tone: () => import('./tools/tone/index.js'),
+  arpeggios: () => import('./tools/arpeggios/index.js'),
 };
 
-class App {
-  #session = null;
-  #isNative = false;
-  #audioEngine = new AudioEngine();
-  #beatRing = null;
-  #samplerUI = null;
-  #playLabel = '';
-  #el = {};
+const $ = (id) => document.getElementById(id);
+const el = {
+  statusDot: $('status-dot'),
+  statusText: $('status-text'),
+  apiText: $('api-text'),
+  beatDots: $('beat-dots'),
+  tempoInput: $('tempo-input'),
+  tempoSlider: $('tempo-slider'),
+  quantumSelect: $('quantum-select'),
+  playStopBtn: $('play-stop-btn'),
+  connectBtn: $('connect-btn'),
+  openWindowBtn: $('open-window-btn'),
+  tabButtons: [...document.querySelectorAll('.view-tabs [data-tab]')],
+  eventLog: $('event-log'),
+  clearLogBtn: $('clear-log-btn'),
+};
+const panels = Object.fromEntries(el.tabButtons.map((b) => [b.dataset.tab, $(`tab-${b.dataset.tab}`)]));
+const mounted = new Map();
+let playLabel = '';
 
-  constructor() {
-    const $ = (id) => document.getElementById(id);
-    this.#el = {
-      connectBtn: $('connect-btn'),
-      statusDot: $('status-dot'),
-      statusText: $('status-text'),
-      apiText: $('api-text'),
-      peerCount: $('peer-count'),
-      tempoSlider: $('tempo-slider'),
-      tempoInput: $('tempo-input'),
-      playStopBtn: $('play-stop-btn'),
-      quantumSelect: $('quantum-select'),
-      metronomeToggle: $('metronome-toggle'),
-      metronomeVolume: $('metronome-volume'),
-      beatRingCanvas: $('beat-ring-canvas'),
-      samplerContainer: $('sampler-container'),
-      latencyToggle: $('latency-toggle'),
-      baseLatencyVal: $('base-latency-val'),
-      outputLatencyVal: $('output-latency-val'),
-      sampleRateVal: $('sample-rate-val'),
-      eventLog: $('event-log'),
-      clearLogBtn: $('clear-log-btn'),
-      openTabBtn: $('open-tab-btn'),
-      standinNote: $('standin-note'),
-      goSetupBtn: $('go-setup-btn'),
-      tabButtons: Array.from(document.querySelectorAll('.view-tabs [data-tab]')),
-      tabViews: {
-        sequencer: $('tab-sequencer'),
-        setup: $('tab-setup'),
-        api: $('tab-api'),
-      },
-    };
-    this.#initUI();
+// --- Log ---
+
+function log(message, tag = 'info') {
+  const pad = (n, w = 2) => String(n).padStart(w, '0');
+  const now = new Date();
+  const item = document.createElement('li');
+  if (tag === 'error') {
+    item.className = 'err';
   }
-
-  #initUI() {
-    const el = this.#el;
-    this.#beatRing = new BeatRing(el.beatRingCanvas);
-    this.#samplerUI = new SamplerUI(el.samplerContainer, this.#audioEngine);
-    this.#samplerUI.buildUI();
-
-    el.connectBtn.addEventListener('click', () => this.#toggleConnect());
-    el.tempoSlider.addEventListener('input', (e) => this.#onTempoInput(Number(e.target.value)));
-    el.tempoInput.addEventListener('change', (e) => this.#onTempoInput(Number(e.target.value)));
-    el.playStopBtn.addEventListener('click', () => this.#requestPlaying(!this.#isPlaying()));
-    el.quantumSelect.addEventListener('change', () => this.#onQuantumChange());
-    el.latencyToggle.addEventListener('change', (e) => this.#toggleLatencyMode(e.target.checked));
-    el.clearLogBtn.addEventListener('click', () => el.eventLog.replaceChildren());
-
-    // Tabs live in the URL (#setup, #api; the sequencer has none), so a reload keeps the tab and a tab can be
-    // linked. Arrow keys, Home and End move between them, as a tablist should.
-    for (const btn of el.tabButtons) {
-      btn.addEventListener('click', () => this.#switchTab(btn.dataset.tab));
-      btn.addEventListener('keydown', (e) => this.#onTabKey(e, btn));
-    }
-    window.addEventListener('hashchange', () => this.#switchTab(this.#tabFromHash(), { updateHash: false }));
-    this.#switchTab(this.#tabFromHash(), { updateHash: false });
-    el.openTabBtn?.addEventListener('click', () => {
-      window.open(window.location.href, '_blank', 'noopener');
-    });
-    el.goSetupBtn?.addEventListener('click', () => {
-      this.#switchTab('setup');
-    });
-
-    // Metronome: remembered per browser.
-    el.metronomeToggle.checked = Boolean(store.get('metronome', false));
-    el.metronomeVolume.value = String(store.get('metronomeVolume', 0.6));
-    this.#audioEngine.metronome = el.metronomeToggle.checked;
-    this.#audioEngine.metronomeVolume = Number(el.metronomeVolume.value);
-    el.metronomeToggle.addEventListener('change', () => {
-      this.#audioEngine.metronome = el.metronomeToggle.checked;
-      store.set('metronome', el.metronomeToggle.checked);
-      this.#log(`Metronome ${el.metronomeToggle.checked ? 'on' : 'off'}`, 'INFO');
-    });
-    el.metronomeVolume.addEventListener('input', () => {
-      this.#audioEngine.metronomeVolume = Number(el.metronomeVolume.value);
-      store.set('metronomeVolume', Number(el.metronomeVolume.value));
-    });
-
-    // A browser can put audio to sleep (Safari, a backgrounded tab); any tap wakes it.
-    document.addEventListener('pointerdown', () => {
-      if (this.#audioEngine.hasContext() && !this.#audioEngine.isRunning()) {
-        this.#audioEngine.resume().catch(() => {});
-      }
-    });
-
-    const loop = () => {
-      requestAnimationFrame(loop);
-      try {
-        this.#samplerUI.updatePlayhead();
-        this.#updatePlayButton();
-      } catch (err) {
-        console.warn('Playhead update failed:', err);
-      }
-    };
-    requestAnimationFrame(loop);
-
-    // Space toggles Play/Stop, like Live. Not while typing in a field, and not on a focused button, where
-    // space already presses the button.
-    document.addEventListener('keydown', (e) => {
-      if (e.code !== 'Space' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || !this.#session) {
-        return;
-      }
-      if (e.target instanceof Element && e.target.closest('input, select, textarea, button, [contenteditable]')) {
-        return;
-      }
-      e.preventDefault();
-      this.#requestPlaying(!this.#isPlaying());
-    });
-
-    this.#log('Press Connect to start audio and join the session.', 'INFO');
+  const time = document.createElement('span');
+  time.className = 't';
+  time.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}.${pad(now.getMilliseconds(), 3)}`;
+  const tagSpan = document.createElement('span');
+  tagSpan.className = 'tag';
+  tagSpan.textContent = tag;
+  const msg = document.createElement('span');
+  msg.textContent = message;
+  item.append(time, tagSpan, msg);
+  const list = el.eventLog;
+  const atBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 4;
+  list.append(item);
+  while (list.childElementCount > 500) {
+    list.firstElementChild.remove();
   }
-
-  #tabFromHash() {
-    const name = window.location.hash.slice(1);
-    return name in this.#el.tabViews ? name : 'sequencer';
+  if (atBottom) {
+    list.scrollTop = list.scrollHeight;
   }
+}
+hub.addEventListener('log', (e) => log(e.detail.message, e.detail.tag));
+el.clearLogBtn.addEventListener('click', () => el.eventLog.replaceChildren());
 
-  #switchTab(tabName, { updateHash = true } = {}) {
-    const el = this.#el;
-    if (!(tabName in el.tabViews)) {
-      tabName = 'sequencer';
-    }
-    for (const btn of el.tabButtons) {
-      const active = btn.dataset.tab === tabName;
-      btn.classList.toggle('on', active);
-      btn.setAttribute('aria-selected', String(active));
-      btn.tabIndex = active ? 0 : -1; // one tab stop for the whole tablist; arrows move inside it
-    }
-    for (const [key, view] of Object.entries(el.tabViews)) {
-      if (view) {
-        view.hidden = key !== tabName;
-      }
-    }
-    if (updateHash) {
-      const url = tabName === 'sequencer' ? window.location.pathname + window.location.search : `#${tabName}`;
-      history.replaceState(null, '', url);
-    }
+// --- Tabs ---
+// Tabs live in the URL (#sampler, #strudel, ...; home has none), so a reload keeps the tab and a
+// tab can be linked or opened in its own window.
+
+function tabFromHash() {
+  const name = location.hash.slice(1);
+  return name in panels ? name : DEFAULT_TAB;
+}
+
+async function mountTool(name) {
+  if (!(name in TOOLS) || mounted.has(name)) {
+    return;
   }
+  const panel = panels[name];
+  mounted.set(name, true);
+  try {
+    const tool = await TOOLS[name]();
+    await tool.mount(panel, hub);
+  } catch (err) {
+    console.error(`The ${name} tool failed to load:`, err);
+    const p = document.createElement('p');
+    p.className = 'help err';
+    p.textContent = `The ${name} tool couldn't load: ${err.message}`;
+    panel.replaceChildren(p);
+    log(`${name} failed to load: ${err.message}`, 'error');
+  }
+}
 
-  #onTabKey(e, btn) {
-    const tabs = this.#el.tabButtons;
-    const i = tabs.indexOf(btn);
-    const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+function switchTab(name, { updateHash = true } = {}) {
+  if (!(name in panels)) {
+    name = DEFAULT_TAB;
+  }
+  for (const btn of el.tabButtons) {
+    const active = btn.dataset.tab === name;
+    btn.classList.toggle('on', active);
+    btn.setAttribute('aria-selected', String(active));
+    btn.tabIndex = active ? 0 : -1;
+  }
+  for (const [key, panel] of Object.entries(panels)) {
+    panel.hidden = key !== name;
+  }
+  el.openWindowBtn.hidden = !(name in TOOLS);
+  if (updateHash) {
+    history.replaceState(null, '', name === DEFAULT_TAB ? location.pathname + location.search : `#${name}`);
+  }
+  mountTool(name);
+}
+
+for (const btn of el.tabButtons) {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  // Arrow keys, Home and End move between tabs, as a tablist should.
+  btn.addEventListener('keydown', (e) => {
+    const i = el.tabButtons.indexOf(btn);
+    const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: el.tabButtons.length - 1 }[e.key];
     if (next === undefined) {
       return;
     }
     e.preventDefault();
-    const target = tabs[(next + tabs.length) % tabs.length];
-    this.#switchTab(target.dataset.tab);
+    const target = el.tabButtons[(next + el.tabButtons.length) % el.tabButtons.length];
+    switchTab(target.dataset.tab);
     target.focus();
+  });
+}
+window.addEventListener('hashchange', () => switchTab(tabFromHash(), { updateHash: false }));
+el.openWindowBtn.addEventListener('click', () => {
+  const url = new URL(location.href);
+  url.searchParams.set('autoconnect', '1');
+  window.open(url, '_blank', 'noopener,width=1100,height=900');
+});
+
+// --- Session bar ---
+
+function renderSession(session) {
+  el.connectBtn.textContent = session ? 'Disconnect' : 'Connect';
+  el.connectBtn.classList.toggle('quiet', Boolean(session));
+  el.playStopBtn.disabled = !session;
+  el.playStopBtn.classList.toggle('quiet', !session);
+  el.apiText.textContent = session ? hub.source : '';
+  renderPeers(session);
+  if (session) {
+    syncTempoUI(session.captureState().tempo);
   }
+  renderBeatDots(session?.quantum ?? Number(el.quantumSelect.value));
+}
 
-  // --- Session ---
-
-  async #toggleConnect() {
-    if (this.#session) {
-      this.#disconnect();
-      return;
-    }
-    const el = this.#el;
-    try {
-      el.connectBtn.disabled = true;
-      el.connectBtn.textContent = 'Connecting…';
-
-      // Start audio inside the tap itself, before any await: Safari only lets a page start sound from the
-      // tap's own handler, and an AudioContext resumed later can wait forever, which left this on "Connecting…".
-      this.#audioEngine.ensureContext();
-      const audioReady = this.#audioEngine.resume();
-
-      const quantum = Number(el.quantumSelect.value) || 4;
-      const { session, isNative } = await requestTempoSession({ quantum, startStopSync: true });
-      this.#session = session;
-      this.#isNative = isNative;
-
-      this.#audioEngine.init(session);
-      // Never let audio hold up joining the session; if it's still asleep, the next tap wakes it.
-      const started = await Promise.race([
-        audioReady.then(() => true, () => false),
-        new Promise((resolve) => setTimeout(() => resolve(false), 1500)),
-      ]);
-      if (!started || !this.#audioEngine.isRunning()) {
-        this.#log('Sound is off until you tap the page again.', 'INFO');
-      }
-      this.#audioEngine.startScheduler();
-
-      this.#beatRing.setSession(session);
-      this.#beatRing.start();
-      this.#samplerUI.setSession(session);
-
-      session.addEventListener('numpeerschange', () => this.#onPeersChange());
-      session.addEventListener('tempochange', () => this.#onTempoChange());
-      session.addEventListener('playingchange', () => this.#onPlayingChange());
-
-      el.connectBtn.disabled = false;
-      el.connectBtn.textContent = 'Disconnect';
-      el.connectBtn.classList.add('quiet');
-      el.playStopBtn.disabled = false;
-      el.playStopBtn.classList.remove('quiet');
-      el.statusDot.className = 'dot ok';
-      el.statusText.textContent = 'Connected';
-      el.apiText.textContent = isNative ? 'navigator.tempoSync' : 'stand-in (BroadcastChannel)';
-      el.peerCount.textContent = String(session.numPeers);
-      if (el.openTabBtn) {
-        el.openTabBtn.hidden = isNative;
-      }
-      if (el.standinNote) {
-        el.standinNote.hidden = isNative;
-      }
-
-      const state = session.captureState();
-      this.#syncTempoUI(state.tempo);
-      this.#updateLatencyInfo();
-
-      this.#log(
-        `Joined the session through ${isNative ? 'navigator.tempoSync' : 'the stand-in'}, ${session.numPeers} peers`,
-        'SESSION'
-      );
-    } catch (err) {
-      console.error('Could not join the tempo session:', err);
-      el.connectBtn.disabled = false;
-      el.connectBtn.textContent = 'Connect';
-      el.statusDot.className = 'dot err';
-      el.statusText.textContent = "Couldn't connect";
-      this.#log(`Couldn't join the session: ${err.message}`, 'ERROR');
-    }
-  }
-
-  #disconnect() {
-    if (!this.#session) {
-      return;
-    }
-    const el = this.#el;
-    const session = this.#session;
-    // Let go of the session everywhere it's read before closing it: a closed session throws on captureState(),
-    // and the ring's last redraw and the playhead loop would hit that.
-    this.#session = null;
-    this.#audioEngine.stopScheduler();
-    this.#audioEngine.detach();
-    this.#beatRing.setSession(null);
-    this.#beatRing.stop();
-    this.#samplerUI.setSession(null);
-    try {
-      session.close();
-    } catch (err) {
-      console.warn('Closing the session failed:', err);
-    }
-
-    el.connectBtn.textContent = 'Connect';
-    el.connectBtn.classList.remove('quiet');
-    el.playStopBtn.disabled = true;
-    el.playStopBtn.classList.add('quiet');
+function renderPeers(session) {
+  if (!session) {
     el.statusDot.className = 'dot';
     el.statusText.textContent = 'Not connected';
-    el.apiText.textContent = '–';
-    el.peerCount.textContent = '0';
-    if (el.openTabBtn) {
-      el.openTabBtn.hidden = true;
-    }
-    if (el.standinNote) {
-      el.standinNote.hidden = true;
-    }
-    this.#updatePlayButton();
-    this.#log('Left the session', 'SESSION');
-  }
-
-  #onPeersChange() {
-    if (!this.#session) {
-      return;
-    }
-    const count = this.#session.numPeers;
-    this.#el.peerCount.textContent = String(count);
-    this.#log(`${count} ${count === 1 ? 'peer' : 'peers'}`, 'PEERS');
-  }
-
-  #onTempoChange() {
-    if (!this.#session) {
-      return;
-    }
-    const { tempo } = this.#session.captureState();
-    this.#syncTempoUI(tempo);
-    this.#log(`Tempo ${tempo.toFixed(2)} bpm`, 'TEMPO');
-  }
-
-  #onPlayingChange() {
-    if (!this.#session) {
-      return;
-    }
-    const { isPlaying } = this.#session.captureState();
-    this.#log(isPlaying ? 'Playing' : 'Stopped', 'PLAYING');
-  }
-
-  // The one path for tempo changes: the slider and the number field both come through here.
-  #onTempoInput(bpm) {
-    const clamped = Math.max(TEMPO_MIN, Math.min(TEMPO_MAX, bpm));
-    this.#syncTempoUI(clamped);
-    if (!this.#session) {
-      return;
-    }
-    const ctx = this.#audioEngine.audioContext;
-    const state = this.#session.captureState(ctx ?? undefined);
-    const t = ctx ? ctx.currentTime : performance.now() / 1000;
-    state.setTempo(clamped, t);
-    this.#session.commitState(state);
-  }
-
-  #syncTempoUI(bpm) {
-    const rounded = Math.round(bpm * 10) / 10;
-    this.#el.tempoSlider.value = rounded;
-    this.#el.tempoInput.value = rounded.toFixed(1);
-  }
-
-  #isPlaying() {
-    return Boolean(this.#session?.captureState().isPlaying);
-  }
-
-  // The one path for play/stop: the button and the space bar. Commits at the next quantum boundary.
-  #requestPlaying(willPlay) {
-    if (!this.#session) {
-      return;
-    }
-    const ctx = this.#audioEngine.audioContext;
-    const state = this.#session.captureState(ctx ?? undefined);
-    const t = ctx ? ctx.currentTime : performance.now() / 1000;
-    const quantum = this.#session.quantum || 4;
-
-    const nextBar = Math.floor(state.beatAtTime(t, quantum) / quantum + 1) * quantum;
-    const at = state.timeAtBeat(nextBar, quantum);
-    state.setIsPlaying(willPlay, at);
-    this.#session.commitState(state);
-    this.#log(`${willPlay ? 'Play' : 'Stop'} at beat ${nextBar}, in ${(at - t).toFixed(2)} s`, 'PLAYING');
-  }
-
-  // The Play/Stop label, from the session state each frame. A start or stop waits for the next quantum
-  // boundary, so while one is pending (timeForIsPlaying still ahead) the button counts down to it. Reading the
-  // shared state, not a local flag, means a change committed by another peer counts down here too. Uses the
-  // performance.now() time base, like the beat ring, so it keeps counting even if audio is asleep.
-  #updatePlayButton() {
-    let label = 'Play';
-    if (this.#session) {
-      const state = this.#session.captureState();
-      const wait = state.timeForIsPlaying - performance.now() / 1000;
-      if (wait > 0.05) {
-        label = `${state.isPlaying ? 'Starts' : 'Stops'} in ${wait.toFixed(1)} s`;
-      } else {
-        label = state.isPlaying ? 'Stop' : 'Play';
-      }
-    }
-    if (label !== this.#playLabel) {
-      this.#playLabel = label;
-      this.#el.playStopBtn.textContent = label;
-    }
-  }
-
-  async #onQuantumChange() {
-    if (!this.#session) {
-      return;
-    }
-    this.#log(`Quantum ${this.#el.quantumSelect.value}, rejoining`, 'INFO');
-    this.#disconnect();
-    await this.#toggleConnect();
-  }
-
-  #toggleLatencyMode(enabled) {
-    this.#audioEngine.latencyMode = enabled;
-    this.#log(`Latency clicks ${enabled ? 'on' : 'off'}`, 'INFO');
-    this.#updateLatencyInfo();
-  }
-
-  #updateLatencyInfo() {
-    const ms = (v) => (v !== null ? `${v.toFixed(2)} ms` : '–');
-    const sr = this.#audioEngine.sampleRate;
-    this.#el.baseLatencyVal.textContent = ms(this.#audioEngine.baseLatencyMs);
-    this.#el.outputLatencyVal.textContent = ms(this.#audioEngine.outputLatencyMs);
-    this.#el.sampleRateVal.textContent = sr !== null ? `${sr} Hz` : '–';
-  }
-
-  #log(message, tag = 'INFO') {
-    const now = new Date();
-    const pad = (n, w = 2) => String(n).padStart(w, '0');
-    const item = document.createElement('li');
-    if (tag === 'ERROR') {
-      item.className = 'err';
-    }
-    const time = document.createElement('span');
-    time.className = 't';
-    time.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}.${pad(now.getMilliseconds(), 3)}`;
-    const tagSpan = document.createElement('span');
-    tagSpan.className = 'tag';
-    tagSpan.textContent = tag.toLowerCase();
-    const msg = document.createElement('span');
-    msg.textContent = message;
-    item.append(time, tagSpan, msg);
-
-    const log = this.#el.eventLog;
-    const atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight - 4;
-    log.appendChild(item);
-    while (log.childElementCount > 500) {
-      log.firstElementChild.remove();
-    }
-    if (atBottom) {
-      log.scrollTop = log.scrollHeight;
-    }
+  } else if (session.hasPeers) {
+    el.statusDot.className = 'dot ok';
+    el.statusText.textContent = 'Playing along';
+  } else {
+    el.statusDot.className = 'dot warn';
+    el.statusText.textContent = hub.source === 'stand-in' ? 'Alone: open a second window' : 'Alone: turn on Link in Live';
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  highlightAll();
-  new App();
-  if (new URLSearchParams(window.location.search).get('autoconnect') === '1') {
-    document.getElementById('connect-btn')?.click();
+function renderBeatDots(quantum) {
+  el.beatDots.replaceChildren(...Array.from({ length: quantum }, () => document.createElement('span')));
+}
+
+function syncTempoUI(bpm) {
+  const rounded = Math.round(bpm * 10) / 10;
+  el.tempoSlider.value = String(rounded);
+  el.tempoInput.value = rounded.toFixed(1);
+}
+
+let unwatch = () => {};
+hub.onSession((session) => {
+  unwatch();
+  renderSession(session);
+  if (!session) {
+    unwatch = () => {};
+    return;
+  }
+  const onTimeline = () => {
+    const { tempo } = session.captureState();
+    syncTempoUI(tempo);
+    log(`Tempo ${tempo.toFixed(2)} bpm`, 'tempo');
+  };
+  const onPlaying = () => log(session.captureState().isPlaying ? 'Playing' : 'Stopped', 'playing');
+  const onPeers = () => {
+    renderPeers(session);
+    log(session.hasPeers ? 'Someone is playing along' : 'No one else is in the session', 'peers');
+  };
+  session.addEventListener('timelinechange', onTimeline);
+  session.addEventListener('playingchange', onPlaying);
+  session.addEventListener('peerschange', onPeers);
+  unwatch = () => {
+    session.removeEventListener('timelinechange', onTimeline);
+    session.removeEventListener('playingchange', onPlaying);
+    session.removeEventListener('peerschange', onPeers);
+  };
+});
+
+async function connect() {
+  el.connectBtn.disabled = true;
+  el.connectBtn.textContent = 'Connecting…';
+  try {
+    const session = await hub.connect();
+    log(`Joined the session through ${hub.source === 'stand-in' ? 'the stand-in' : `navigator.tempoSync (${hub.source})`}; ${session.hasPeers ? 'someone is playing along' : 'no one else yet'}`, 'session');
+  } catch (err) {
+    console.error('Could not join the tempo session:', err);
+    el.statusDot.className = 'dot err';
+    el.statusText.textContent = "Couldn't connect";
+    el.connectBtn.textContent = 'Connect';
+    log(`Couldn't join the session: ${err.message}`, 'error');
+  } finally {
+    el.connectBtn.disabled = false;
+  }
+}
+
+el.connectBtn.addEventListener('click', () => {
+  if (hub.session) {
+    hub.disconnect();
+    log('Left the session', 'session');
+  } else {
+    connect();
   }
 });
+
+function onTempoInput(bpm) {
+  const clamped = Math.max(TEMPO_MIN, Math.min(TEMPO_MAX, bpm));
+  syncTempoUI(clamped);
+  hub.setTempo(clamped);
+}
+el.tempoSlider.addEventListener('input', (e) => onTempoInput(Number(e.target.value)));
+el.tempoInput.addEventListener('change', (e) => onTempoInput(Number(e.target.value)));
+
+el.quantumSelect.addEventListener('change', async () => {
+  const quantum = Number(el.quantumSelect.value);
+  log(`Bar of ${quantum} beats${hub.session ? ', rejoining' : ''}`, 'info');
+  await hub.setQuantum(quantum);
+  renderBeatDots(quantum);
+});
+
+function togglePlaying() {
+  const session = hub.session;
+  if (!session) {
+    return;
+  }
+  const willPlay = !session.captureState().isPlaying;
+  const wait = hub.requestPlaying(willPlay);
+  log(`${willPlay ? 'Play' : 'Stop'} on the next bar, in ${wait.toFixed(2)} s`, 'playing');
+}
+el.playStopBtn.addEventListener('click', togglePlaying);
+
+// Space toggles Play/Stop, like Live. Not while typing, and not on a focused button, where space
+// already presses it. Tools with their own editors (Strudel, Hydra) are text fields, so they keep it.
+document.addEventListener('keydown', (e) => {
+  if (e.code !== 'Space' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || !hub.session) {
+    return;
+  }
+  if (e.target instanceof Element && e.target.closest('input, select, textarea, button, [contenteditable], .cm-editor')) {
+    return;
+  }
+  e.preventDefault();
+  togglePlaying();
+});
+
+// Each frame: the beat dots, and the Play/Stop label. A start or stop waits for the next bar line,
+// so while one is pending the button counts down to it, whoever committed it.
+function frame() {
+  requestAnimationFrame(frame);
+  const session = hub.session;
+  let label = 'Play';
+  let lit = -1;
+  if (session) {
+    const state = session.captureState();
+    const now = performance.now() / 1000;
+    const wait = state.timeForIsPlaying - now;
+    if (wait > 0.05) {
+      label = `${state.isPlaying ? 'Starts' : 'Stops'} in ${wait.toFixed(1)} s`;
+    } else {
+      label = state.isPlaying ? 'Stop' : 'Play';
+    }
+    lit = Math.floor(state.phaseAtTime(now));
+    el.beatDots.classList.toggle('playing', state.isPlaying && wait <= 0);
+  }
+  [...el.beatDots.children].forEach((dot, i) => dot.classList.toggle('on', i === lit));
+  if (label !== playLabel) {
+    playLabel = label;
+    el.playStopBtn.textContent = label;
+  }
+}
+requestAnimationFrame(frame);
+
+highlightAll();
+renderSession(null);
+switchTab(tabFromHash(), { updateHash: false });
+log(hub.available ? 'navigator.tempoSync is available. Press Connect to join.' : 'No navigator.tempoSync here; Connect uses the stand-in, which syncs this browser’s tabs.', 'info');
+if (new URLSearchParams(location.search).get('autoconnect') === '1') {
+  connect();
+}
