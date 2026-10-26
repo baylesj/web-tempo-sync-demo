@@ -1,0 +1,149 @@
+/* The tone.js tab. Everything else comes from bayl.es-style and css/style.css. */
+
+/* .stack and .rows are flex, which would otherwise win over [hidden]. */
+#tab-tone [hidden] {
+  display: none;
+}
+
+#tab-tone .split + .split {
+  margin-top: 28px;
+}
+
+.tone-transport .tempo-number {
+  width: 100px;
+}
+
+.tone-transport label.sub {
+  margin: 0 0 0 8px;
+}
+
+#tab-tone .rows {
+  max-width: 560px;
+}
+
+/* The progression: four bars, the current one lit. */
+.tone-bars {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  max-width: 560px;
+}
+
+.tone-bars span {
+  padding: 4px 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--comment);
+  font-size: 13px;
+  text-align: center;
+}
+
+.tone-bars span.on {
+  border-color: var(--sig);
+  color: var(--sig-text);
+}
+
+/* The bar: a row of steps per voice, grouped by beat; the playhead outlines its column. */
+.tone-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tone-row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.tone-voice {
+  color: var(--comment);
+  font-size: 12px;
+}
+
+.tone-steps {
+  display: grid;
+  grid-template-columns: repeat(var(--steps, 16), minmax(0, 1fr));
+  gap: 3px;
+}
+
+.tone-steps .cell {
+  height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--field);
+}
+
+.tone-steps .cell.beat:not(:first-child) {
+  margin-left: 5px;
+}
+
+.tone-steps .cell.hit {
+  border-color: var(--sig);
+  background: var(--sig-fill);
+}
+
+.tone-steps .cell.hold {
+  border-color: color-mix(in srgb, var(--sig) 45%, var(--line));
+  background: color-mix(in srgb, var(--sig-fill) 30%, var(--field));
+}
+
+.tone-steps .cell.muted.hit,
+.tone-steps .cell.muted.hold {
+  border-color: var(--comment);
+  background: color-mix(in srgb, var(--comment) 25%, var(--field));
+}
+
+.tone-steps .cell.now {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}
+
+/* Sound controls: a wrapping row of fields. */
+.tone-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px 24px;
+  align-items: end;
+}
+
+.tone-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tone-field label.sub,
+.tone-field span.sub {
+  margin: 0;
+  color: var(--comment);
+  font: 12px var(--mono);
+}
+
+.tone-field .seg {
+  flex-wrap: wrap;
+}
+
+@media (width <= 760px) {
+  .tone-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .tone-steps {
+    gap: 2px;
+  }
+
+  .tone-steps .cell {
+    height: 22px;
+  }
+
+  .tone-steps .cell.beat:not(:first-child) {
+    margin-left: 3px;
+  }
+
+  .tone-transport label.sub {
+    margin-left: 0;
+  }
+}

@@ -1,0 +1,155 @@
+/* The hydra tab. Tokens and base styles come from bayl.es-style and css/style.css. */
+
+.hydra-stage {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #000;
+}
+
+.hydra-canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+.hydra-stage:fullscreen {
+  border: 0;
+  border-radius: 0;
+}
+
+.hydra-stage:fullscreen .hydra-canvas {
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+.hydra-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 16px;
+  text-align: center;
+}
+
+.hydra-readout {
+  min-height: 1.6em;
+  color: var(--comment);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.hydra-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--sig);
+  border-radius: 6px;
+}
+
+.hydra-note[hidden] {
+  display: none;
+}
+
+.hydra-note p {
+  margin: 0;
+}
+
+/* Editor: a transparent textarea over its highlighted text. Both wrap the same way, so the caret
+   lines up and nothing scrolls sideways at phone width. */
+.hydra-editor {
+  display: grid;
+  max-height: 60vh;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field);
+}
+
+.hydra-editor:focus-within {
+  border-color: var(--sig);
+}
+
+.hydra-editor > pre,
+.hydra-editor > textarea {
+  grid-area: 1 / 1;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 14px 16px;
+  border: 0;
+  font: 14px/1.65 var(--mono);
+  letter-spacing: normal;
+  tab-size: 2;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.hydra-editor > pre {
+  color: var(--ink);
+  pointer-events: none;
+}
+
+.hydra-editor > pre code {
+  font: inherit;
+}
+
+.hydra-editor > textarea {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  resize: none;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--ink);
+  outline: none;
+}
+
+.hydra-editor > textarea::selection {
+  background: color-mix(in srgb, var(--sig) 30%, transparent);
+  color: transparent;
+}
+
+.hydra-output:empty {
+  display: none;
+}
+
+.hydra-output pre {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--comment);
+  font: 13px/1.5 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.hydra-output.is-error pre {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+.hydra-helpers .kv {
+  min-height: 0;
+  padding-block: 6px;
+}
+
+.hydra-helpers code {
+  white-space: nowrap;
+}
+
+@media (width <= 560px) {
+  .hydra-editor > pre,
+  .hydra-editor > textarea {
+    padding: 12px;
+    font-size: 13px;
+  }
+}

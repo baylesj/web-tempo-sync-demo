@@ -8,10 +8,16 @@
 //   hub.onSession((session) => { ... })   called now and on every change; session may be null
 //   await hub.connect()                   join (call it from a click: audio needs one)
 //   hub.requestPlaying(true, ctx)         start or stop on the next bar line
+//   hub.nextBarTime(state, t)             the next bar line far enough ahead to schedule for
 //   hub.setTempo(bpm, ctx)                change the session tempo now
+//   hub.isPlayingAt(state, t, before)     whether the transport plays at t (see below)
 //   hub.log(message, tag)                 add a line to the page's log
 
 import { StandInTempoSession } from './stand-in.js';
+
+// Tools schedule audio up to about 0.25 s ahead (Strudel does), so a start or stop needs at
+// least this much notice; closer than this, it waits for the bar after.
+const MIN_NOTICE = 0.3;
 
 class Hub extends EventTarget {
   session = null;
@@ -92,18 +98,34 @@ class Hub extends EventTarget {
     this.session.commitState(state);
   }
 
+  // The first bar line at least MIN_NOTICE after t, in the state's time base.
+  nextBarTime(state, t) {
+    const q = this.session?.quantum ?? this.quantum;
+    let bar = Math.floor(state.beatAtTime(t, q) / q + 1) * q;
+    if (state.timeAtBeat(bar, q) - t < MIN_NOTICE) {
+      bar += q;
+    }
+    return state.timeAtBeat(bar, q);
+  }
+
   // Start or stop at the next bar line, so every participant changes on the same beat.
   requestPlaying(willPlay, context) {
     if (!this.session) {
       return null;
     }
-    const q = this.session.quantum;
     const state = this.session.captureState(context ?? undefined);
     const now = this.now(context);
-    const at = state.timeAtBeat(Math.floor(state.beatAtTime(now, q) / q + 1) * q, q);
+    const at = this.nextBarTime(state, now);
     state.setIsPlaying(willPlay, at);
     this.session.commitState(state);
     return at - now;
+  }
+
+  // A start or stop takes effect at timeForIsPlaying, usually the next bar line. From then on
+  // isPlaying holds; before then, whatever held before does. A snapshot can't tell what that
+  // was, so pass what you last saw (`before`); without it, a pending change is assumed.
+  isPlayingAt(state, t, before = !state.isPlaying) {
+    return t >= state.timeForIsPlaying ? state.isPlaying : before;
   }
 
   log(message, tag = 'info') {

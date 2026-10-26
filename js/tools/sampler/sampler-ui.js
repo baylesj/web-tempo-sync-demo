@@ -1,5 +1,7 @@
 // The 4-track x 16-step pattern grid.
 
+import { hub } from '../../hub.js';
+
 export class SamplerUI {
   #container;
   #audioEngine;
@@ -8,6 +10,7 @@ export class SamplerUI {
   #headerCells = [];
   #presetButtons = new Map();
   #lastPlayheadStep = -1;
+  #playing = false;
 
   static PRESETS = {
     fourOnTheFloor: {
@@ -195,14 +198,16 @@ export class SamplerUI {
       return;
     }
     const vis = this.#session.captureState();
-    if (!vis.isPlaying) {
+    const now = performance.now() / 1000;
+    this.#playing = hub.isPlayingAt(vis, now, this.#playing);
+    if (!this.#playing) {
       if (this.#lastPlayheadStep !== -1) {
         this.#setPlayhead(this.#lastPlayheadStep, false);
         this.#lastPlayheadStep = -1;
       }
       return;
     }
-    const beat = vis.beatAtTime(performance.now() / 1000, this.#session.quantum || 4);
+    const beat = vis.beatAtTime(now, this.#session.quantum || 4);
     const step = ((Math.floor(beat * 4) % 16) + 16) % 16;
     if (step !== this.#lastPlayheadStep) {
       if (this.#lastPlayheadStep !== -1) {

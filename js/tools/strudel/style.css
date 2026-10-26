@@ -1,0 +1,100 @@
+/* The strudel tab. Tokens and base styles come from bayl.es-style and css/style.css. */
+
+.strudel-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--sig);
+  border-radius: 6px;
+}
+
+.strudel-note[hidden] {
+  display: none;
+}
+
+.strudel-note p {
+  margin: 0;
+}
+
+/* Strudel's editor (CodeMirror) sits in a container it adds inside .strudel-code. Its theme
+   colors the code; the box is the page's. */
+.strudel-code {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field);
+}
+
+.strudel-code:focus-within {
+  border-color: var(--sig);
+}
+
+.strudel-code > div {
+  background: transparent !important;
+}
+
+.strudel-code .cm-editor {
+  max-height: 60vh;
+  background: transparent !important;
+}
+
+.strudel-code .cm-editor.cm-focused {
+  outline: none;
+}
+
+.strudel-code .cm-scroller {
+  overflow: auto;
+  line-height: 1.55;
+}
+
+.strudel-code .cm-content {
+  padding: 10px 0;
+}
+
+.strudel-code .cm-gutters {
+  border-right: 1px solid var(--line);
+  background: transparent !important;
+  color: var(--comment);
+}
+
+.strudel-loading {
+  margin: 0;
+  padding: 16px;
+}
+
+.strudel-readout {
+  min-height: 1.6em;
+  color: var(--comment);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.strudel-output:empty {
+  display: none;
+}
+
+.strudel-output pre {
+  margin: 0;
+  padding: 8px 12px;
+  overflow-x: auto;
+  border-radius: 6px;
+  background: var(--field);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.strudel-output.is-error pre {
+  color: var(--pink);
+}
+
+@media (max-width: 600px) {
+  .strudel-code .cm-editor {
+    max-height: 50vh;
+  }
+}
