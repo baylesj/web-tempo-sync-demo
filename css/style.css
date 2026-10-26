@@ -853,3 +853,15 @@ article.doc td {
   text-align: left;
   vertical-align: top;
 }
+
+/* The wordmark is three words here, so on a phone it shrinks a little and the theme toggle stays beside it. */
+@media (width <= 480px) {
+  .top {
+    flex-wrap: nowrap;
+    gap: 12px;
+  }
+
+  .top .mark {
+    font-size: clamp(30px, 10vw, 44px);
+  }
+}
