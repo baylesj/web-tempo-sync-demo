@@ -26,7 +26,7 @@ try:
     content = res.read().decode('utf-8')
     assert '<title>Web Tempo Sync</title>' in content
 
-    for path in ['css/style.css', 'js/app.js', 'js/hub.js', 'js/stand-in.js', 'js/highlight.js', 'js/tools/sampler/index.js', 'js/tools/sampler/audio.js', 'js/tools/sampler/beat-ring.js', 'js/tools/sampler/sampler-ui.js']:
+    for path in ['css/style.css', 'js/app.js', 'js/docs.js', 'js/hub.js', 'js/stand-in.js', 'js/highlight.js', 'js/tools/sampler/index.js', 'js/tools/sampler/audio.js', 'js/tools/sampler/beat-ring.js', 'js/tools/sampler/sampler-ui.js']:
         r = opener.open(f'http://127.0.0.1:{PORT}/{path}')
         print(f'{path}: {r.status} ({len(r.read())} bytes)')
 

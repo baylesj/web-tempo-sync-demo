@@ -22,14 +22,28 @@
         <button class="theme-toggle" type="button"></button>
       </header>
 
-      <p class="lede">
-        Web Tempo Sync is a proposed web API that lets a page play in time with music apps and hardware on the
-        local network, and with other pages: shared tempo, bar phase and start/stop, with nothing to install.
-        Every tool here shares one session. Start one, switch to another, and they stay in time with each other
-        and with Ableton Live.
-      </p>
+      <div class="sticky-top">
+      <nav class="navbar" aria-label="Sections">
+        <div class="nav-tabs" role="tablist">
+          <button type="button" class="on" data-tab="home" role="tab" aria-controls="tab-home" aria-selected="true">home</button>
+          <span class="nav-group" role="presentation">read</span>
+          <button type="button" data-tab="spec" role="tab" aria-controls="tab-spec" aria-selected="false">spec</button>
+          <button type="button" data-tab="explainer" role="tab" aria-controls="tab-explainer" aria-selected="false">explainer</button>
+          <button type="button" data-tab="objections" role="tab" aria-controls="tab-objections" aria-selected="false">objections</button>
+          <button type="button" data-tab="privacy" role="tab" aria-controls="tab-privacy" aria-selected="false">privacy</button>
+          <span class="nav-group" role="presentation">play</span>
+          <button type="button" data-tab="sampler" role="tab" aria-controls="tab-sampler" aria-selected="false">sampler</button>
+          <button type="button" data-tab="strudel" role="tab" aria-controls="tab-strudel" aria-selected="false">strudel</button>
+          <button type="button" data-tab="hydra" role="tab" aria-controls="tab-hydra" aria-selected="false">hydra</button>
+          <button type="button" data-tab="tone" role="tab" aria-controls="tab-tone" aria-selected="false">tone.js</button>
+          <button type="button" data-tab="arpeggios" role="tab" aria-controls="tab-arpeggios" aria-selected="false">arpeggios</button>
+          <span class="nav-group" role="presentation">build</span>
+          <button type="button" data-tab="setup" role="tab" aria-controls="tab-setup" aria-selected="false">setup</button>
+          <button type="button" data-tab="api" role="tab" aria-controls="tab-api" aria-selected="false">api</button>
+        </div>
+      </nav>
 
-      <section class="session-bar" aria-label="Session">
+      <section class="session-bar" aria-label="Session" hidden>
         <div class="sb-status">
           <span id="status-dot" class="dot"></span>
           <span id="status-text">Not connected</span>
@@ -59,28 +73,24 @@
         </div>
       </section>
 
-      <nav class="view-tabs" aria-label="View">
-        <div class="seg" role="tablist">
-          <button type="button" class="on" data-tab="home" role="tab" aria-controls="tab-home" aria-selected="true">home</button>
-          <button type="button" data-tab="sampler" role="tab" aria-controls="tab-sampler" aria-selected="false">sampler</button>
-          <button type="button" data-tab="strudel" role="tab" aria-controls="tab-strudel" aria-selected="false">strudel</button>
-          <button type="button" data-tab="hydra" role="tab" aria-controls="tab-hydra" aria-selected="false">hydra</button>
-          <button type="button" data-tab="tone" role="tab" aria-controls="tab-tone" aria-selected="false">tone.js</button>
-          <button type="button" data-tab="arpeggios" role="tab" aria-controls="tab-arpeggios" aria-selected="false">arpeggios</button>
-          <button type="button" data-tab="setup" role="tab" aria-controls="tab-setup" aria-selected="false">setup</button>
-          <button type="button" data-tab="api" role="tab" aria-controls="tab-api" aria-selected="false">api</button>
-        </div>
-      </nav>
+      </div>
 
       <div id="tab-home" class="tab-view" role="tabpanel">
+        <p class="lede">
+          Web Tempo Sync is a proposed web API that lets a page play in time with music apps and hardware on the
+          local network, and with other pages: shared tempo, bar phase and start/stop, with nothing to install.
+          The tools under <strong>play</strong> share one session: start one, switch to another, and they stay in
+          time with each other and with Ableton Live.
+        </p>
+
         <section class="split" aria-labelledby="home-docs-label">
           <h2 class="label" id="home-docs-label"><span class="n">01</span>read</h2>
           <div class="stack">
             <nav class="docs" aria-label="The proposal">
-              <a href="/web-tempo-sync/"><b>Specification</b><span>The API and its algorithms</span></a>
-              <a href="/web-tempo-sync/explainer.html"><b>Explainer</b><span>Why, the use cases, and the design</span></a>
-              <a href="/web-tempo-sync/OBJECTIONS.html"><b>Objections</b><span>The "no"s we expect, and our answers</span></a>
-              <a href="/web-tempo-sync/security-privacy-questionnaire.html"><b>Security &amp; privacy</b><span>W3C self-review questionnaire</span></a>
+              <a href="#spec"><b>Specification</b><span>The API and its algorithms</span></a>
+              <a href="#explainer"><b>Explainer</b><span>Why, the use cases, and the design</span></a>
+              <a href="#objections"><b>Objections</b><span>The "no"s we expect, and our answers</span></a>
+              <a href="#privacy"><b>Security &amp; privacy</b><span>W3C self-review questionnaire</span></a>
             </nav>
           </div>
         </section>
@@ -114,6 +124,11 @@
           </div>
         </section>
       </div>
+
+      <div id="tab-spec" class="tab-view doc-view" role="tabpanel" data-doc="spec" hidden></div>
+      <div id="tab-explainer" class="tab-view doc-view" role="tabpanel" data-doc="explainer" hidden></div>
+      <div id="tab-objections" class="tab-view doc-view" role="tabpanel" data-doc="objections" hidden></div>
+      <div id="tab-privacy" class="tab-view doc-view" role="tabpanel" data-doc="privacy" hidden></div>
 
       <div id="tab-sampler" class="tab-view" role="tabpanel" hidden>
         <section class="split" aria-labelledby="sampler-clock-label">

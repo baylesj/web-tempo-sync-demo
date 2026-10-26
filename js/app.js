@@ -1,8 +1,11 @@
-// Page controller: the session bar, the tabs, and the log. Each tool tab is a module that
-// loads the first time it's shown and keeps running when hidden; they share the hub's session.
+// Page controller: the navbar's tabs, the session bar, and the log. Each tool tab (play) is a
+// module that loads the first time it's shown and keeps running when hidden; they share the
+// hub's session, and the session bar shows only on them. The read tabs load the proposal's
+// documents (docs.js).
 
 import { hub } from './hub.js';
 import { highlightAll } from './highlight.js';
+import { mountDoc } from './docs.js';
 
 const TEMPO_MIN = 60;
 const TEMPO_MAX = 200;
@@ -29,7 +32,8 @@ const el = {
   playStopBtn: $('play-stop-btn'),
   connectBtn: $('connect-btn'),
   openWindowBtn: $('open-window-btn'),
-  tabButtons: [...document.querySelectorAll('.view-tabs [data-tab]')],
+  sessionBar: document.querySelector('.session-bar'),
+  tabButtons: [...document.querySelectorAll('.nav-tabs [data-tab]')],
   eventLog: $('event-log'),
   clearLogBtn: $('clear-log-btn'),
 };
@@ -78,11 +82,15 @@ function tabFromHash() {
 }
 
 async function mountTool(name) {
-  if (!(name in TOOLS) || mounted.has(name)) {
+  const panel = panels[name];
+  if (mounted.has(name) || !(name in TOOLS || panel.dataset.doc)) {
     return;
   }
-  const panel = panels[name];
   mounted.set(name, true);
+  if (panel.dataset.doc) {
+    await mountDoc(panel, panel.dataset.doc);
+    return;
+  }
   try {
     const tool = await TOOLS[name]();
     await tool.mount(panel, hub);
@@ -109,7 +117,7 @@ function switchTab(name, { updateHash = true } = {}) {
   for (const [key, panel] of Object.entries(panels)) {
     panel.hidden = key !== name;
   }
-  el.openWindowBtn.hidden = !(name in TOOLS);
+  el.sessionBar.hidden = !(name in TOOLS);
   if (updateHash) {
     history.replaceState(null, '', name === DEFAULT_TAB ? location.pathname + location.search : `#${name}`);
   }
@@ -256,10 +264,10 @@ function togglePlaying() {
 }
 el.playStopBtn.addEventListener('click', togglePlaying);
 
-// Space toggles Play/Stop, like Live. Not while typing, and not on a focused button, where space
-// already presses it. Tools with their own editors (Strudel, Hydra) are text fields, so they keep it.
+// Space toggles Play/Stop, like Live, on the play tabs (elsewhere it scrolls). Not while typing,
+// and not on a focused button, where space already presses it. Tools with their own editors (Strudel, Hydra) are text fields, so they keep it.
 document.addEventListener('keydown', (e) => {
-  if (e.code !== 'Space' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || !hub.session) {
+  if (e.code !== 'Space' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || !hub.session || el.sessionBar.hidden) {
     return;
   }
   if (e.target instanceof Element && e.target.closest('input, select, textarea, button, [contenteditable], .cm-editor')) {
