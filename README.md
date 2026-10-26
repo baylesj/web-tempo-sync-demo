@@ -1,9 +1,11 @@
 # Web Tempo Sync Demo
 
+Part of **Web Tempo Sync**: [spec and explainer](https://github.com/baylesj/web-tempo-sync) · [implementation and extension](https://github.com/baylesj/tempo-sync) · [demo](https://github.com/baylesj/web-tempo-sync-demo) · [all repos](https://github.com/search?q=topic%3Aweb-tempo-sync+user%3Abaylesj&type=repositories)
+
 This repository is a prototype demo for the Web Tempo Sync API. The API lets a web page join a local network musical tempo session that Ableton Live, Push 3, and Move use (compatible with Ableton Link).
 
 The demo works in two modes:
-1. Native API mode: Uses `navigator.tempoSync` when the browser flag is enabled.
+1. Native API mode: Uses `navigator.tempoSync` when the browser flag is enabled, or when the [Web Tempo Sync extension](https://github.com/baylesj/tempo-sync/tree/main/extension) is installed on stable Chrome.
 2. In-page fake session mode: Falls back automatically when `navigator.tempoSync` is not present. It implements Ableton Link timeline semantics in JavaScript and synchronizes tempo and transport state across tabs via a `BroadcastChannel`.
 
 ## How to Run
@@ -28,9 +30,9 @@ An experiment with WebMIDI input (MIDI clock follow, notes to pattern rows) live
 
 ## Running Against Prototype Chromium
 
-A prebuilt macOS Apple Silicon prototype bundle (`Chromium-tempo-sync-macos-arm64.zip`) is attached to the [`v0.1.0` release](https://github.com/baylesj/tempo-sync-demo/releases/tag/v0.1.0):
+A prebuilt macOS Apple Silicon prototype bundle (`Chromium-tempo-sync-macos-arm64.zip`) is attached to the [`v0.1.0` release](https://github.com/baylesj/web-tempo-sync-demo/releases/tag/v0.1.0):
 
-- Direct download: [`Chromium-tempo-sync-macos-arm64.zip`](https://github.com/baylesj/tempo-sync-demo/releases/download/v0.1.0/Chromium-tempo-sync-macos-arm64.zip)
+- Direct download: [`Chromium-tempo-sync-macos-arm64.zip`](https://github.com/baylesj/web-tempo-sync-demo/releases/download/v0.1.0/Chromium-tempo-sync-macos-arm64.zip)
 - Public mirror (this repo is private, so the GitHub links only work for people with access): https://bayl.es/tempo-sync-demo-builds/v0.1.0/Chromium-tempo-sync-macos-arm64.zip ([sha256](https://bayl.es/tempo-sync-demo-builds/v0.1.0/Chromium-tempo-sync-macos-arm64.zip.sha256))
 
 After extracting `Chromium.app`, clear the macOS quarantine attribute (since the prototype build is ad-hoc signed) and launch it with the `TempoSync` Blink feature and Rust Link engine enabled:
