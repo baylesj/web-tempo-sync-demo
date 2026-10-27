@@ -1,6 +1,6 @@
 # tone.js tab
 
-A three-voice instrument (bass, chords, lead) on a fork of [Tone.js](https://tonejs.github.io) whose Transport follows the Web Tempo Sync session. It plays when the session plays, starting on its bar line; its bpm follows the session's tempo, and the Transport's own bpm and Play/Stop change the session's.
+A three-voice instrument (bass, chords, lead) on a fork of [Tone.js](https://tonejs.github.io) whose Transport follows the Web Tempo Sync session. It plays when the session plays, starting on its bar line; its bpm follows the session's tempo, and the Transport's bpm changes the session's. Play starts the session when it's stopped; while it plays, Play and Stop only start and stop this instrument, from the next bar line.
 
 - `index.js`: the tab (`mount(panel, hub)`), the session wiring, the grid and readouts.
 - `music.js`: moods (a scale and a four-bar progression) and seeded patterns.

@@ -865,3 +865,46 @@ article.doc td {
     font-size: clamp(26px, 8vw, 32px);
   }
 }
+
+/* Focus: the tool fills the tab (?focus, the focus button, F). Only the session strip stays, over
+   the tool, which gets the full width. Esc leaves. */
+html[data-focus] .top,
+html[data-focus] .navbar,
+html[data-focus] footer,
+html[data-focus] .log-panel,
+html[data-focus] .tool-about {
+  display: none;
+}
+
+html[data-focus] main.wide {
+  max-width: none;
+  padding: 0 16px 16px;
+  gap: 12px;
+}
+
+html[data-focus] .sticky-top {
+  margin: 0 0 12px;
+  padding: 8px 0 0;
+}
+
+html[data-focus] .session-bar {
+  margin: 0;
+}
+
+html[data-focus] .sb-cell {
+  padding-block: 6px 8px;
+}
+
+html[data-focus] .tool-view > .split {
+  grid-template-columns: minmax(0, 1fr);
+  padding-bottom: 16px;
+}
+
+html[data-focus] .tool-view > .split > .label {
+  display: none;
+}
+
+#focus-btn[aria-pressed="true"] {
+  border-color: var(--sig-fill);
+  color: var(--sig-text);
+}

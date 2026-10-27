@@ -5,6 +5,7 @@
 import { BARS, KEYS, MOODS, makePatterns } from './music.js';
 import { Instrument, SOUNDS } from './instrument.js';
 import { getTone } from './runtime.js';
+import { PlaySwitch } from '../../hub.js';
 
 const STORE_PREFIX = 'tempo-sync-demo.tone.';
 const TEMPO_MIN = 60;
@@ -120,7 +121,7 @@ export async function mount(panel, hub) {
   const playControls = el('div', { class: 'stack' },
     el('div', { class: 'actions tone-transport' }, playBtn,
       el('label', { class: 'sub', for: 'tone-bpm', text: 'transport bpm' }), tempoInput, playStatus),
-    el('p', { class: 'help', text: 'Play waits for the next bar line when someone else is playing, and starts at once when you are alone. Stop waits for the bar line too. The bpm here is the Transport’s own: change it and the whole session follows.' }));
+    el('p', { class: 'help', text: 'Play starts the session on its next bar line, or at once when you are alone. While the session plays, Play and Stop start and stop just this instrument, on the next bar line, and anything else playing carries on. The bpm here is the Transport’s own: change it and the whole session follows.' }));
   tempoInput.id = 'tone-bpm';
 
   const readout = {
@@ -282,20 +283,21 @@ export async function mount(panel, hub) {
     }
   });
 
-  // Play and Stop go through the Transport: the fork commits them to the session.
+  // With the session stopped, Play starts the Transport, which the fork commits to the session.
+  // While it plays, Play and Stop only start or stop this instrument, on the next bar line: the
+  // Transport is shared with the arpeggios tab, and the session with everyone.
+  const own = new PlaySwitch();
   playBtn.addEventListener('click', () => {
     if (!sync) {
       return;
     }
     wake();
-    const state = sync.captureState();
-    if (state.isPlaying) {
-      // on the next bar line, as the session bar does
-      transport.stop(transport.nextSubdivision('1m') || undefined);
-      hub.log('Tone.js: stop on the next bar');
-    } else {
+    const did = hub.toggleTool(own, sync.captureState(), audio.currentTime);
+    if (did === 'start') {
       transport.start();
       hub.log('Tone.js: Transport.start(), on the next bar line');
+    } else {
+      hub.log(`Tone.js: ${did === 'on' ? 'plays' : 'stops'} from the next bar; the session plays on`);
     }
   });
 
@@ -320,7 +322,7 @@ export async function mount(panel, hub) {
       const bar = Math.floor(sixteenth / steps) % BARS;
       const step = ((sixteenth % steps) + steps) % steps;
       const pattern = patterns[bar];
-      if (pattern) {
+      if (pattern && own.playingAt(time)) {
         instrument.playStep(pattern, step, time, 60 / transport.bpm.getValueAtTime(time) / 4);
       }
     }, Array.from({ length: steps }, (_, i) => i), '16n').start(0);
@@ -366,15 +368,19 @@ export async function mount(panel, hub) {
       }
     }
     const wait = state.timeForIsPlaying - t;
+    const ownWait = state.isPlaying ? own.wait(t) : 0;
     const playing = state.isPlaying && wait <= 0;
-    let label = state.isPlaying ? 'Stop' : 'Play';
-    if (wait > 0.05) {
+    const on = state.isPlaying && own.on;
+    let label = on ? 'Stop' : 'Play';
+    if (ownWait > 0.05) {
+      label = `${own.on ? 'Starts' : 'Stops'} in ${ownWait.toFixed(1)} s`;
+    } else if (wait > 0.05) {
       label = `${state.isPlaying ? 'Starts' : 'Stops'} in ${wait.toFixed(1)} s`;
     }
     if (label !== playLabel) {
       playLabel = label;
       playBtn.textContent = label;
-      playBtn.classList.toggle('quiet', state.isPlaying && wait <= 0.05);
+      playBtn.classList.toggle('quiet', on && wait <= 0.05 && ownWait <= 0.05);
     }
     playStatus.textContent = audio.state === 'running' ? '' : 'tap anywhere to turn the sound on';
 

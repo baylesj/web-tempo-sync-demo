@@ -16,7 +16,7 @@
     <main class="wide">
       <header class="top">
         <div>
-          <span class="kicker">a proposed web API</span>
+          <span class="kicker">Draft proposal for the W3C Audio Community Group</span>
           <h1 class="mark">web tempo sync</h1>
         </div>
         <button class="theme-toggle" type="button"></button>
@@ -85,6 +85,7 @@
         <div class="sb-cell sb-actions">
           <button id="play-stop-btn" type="button" class="quiet" disabled>Play</button>
           <button id="connect-btn" type="button">Connect</button>
+          <button id="focus-btn" type="button" class="quiet sb-icon" title="Focus: this tool fills the tab (F; Esc to leave)" aria-label="Focus on this tool" aria-pressed="false"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <button id="open-window-btn" type="button" class="quiet sb-icon" title="Open this tab in its own window" aria-label="Open this tab in its own window"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M9 2.5h4.5V7M13.5 2.5 7.5 8.5M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </div>
       </section>
@@ -95,8 +96,8 @@
         <p class="lede">
           Web Tempo Sync is a proposed web API that lets a page play in time with music apps and hardware on the
           local network, and with other pages: shared tempo, bar phase and start/stop, with nothing to install.
-          The tools under <strong>play</strong> share one session: start one, switch to another, and they stay in
-          time with each other and with Ableton Live.
+          Each tool under <strong>play</strong> joins the session on its
+          own: join two and they play in time with each other, and with Ableton Live.
         </p>
 
         <section class="split" aria-labelledby="home-docs-label">

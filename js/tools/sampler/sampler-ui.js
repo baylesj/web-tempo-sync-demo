@@ -1,6 +1,6 @@
 // The 4-track x 16-step pattern grid.
 
-import { hub } from '../../hub.js';
+import { isPlayingAt } from '../../hub.js';
 
 export class SamplerUI {
   #container;
@@ -199,7 +199,7 @@ export class SamplerUI {
     }
     const vis = this.#session.captureState();
     const now = performance.now() / 1000;
-    this.#playing = hub.isPlayingAt(vis, now, this.#playing);
+    this.#playing = isPlayingAt(vis, now, this.#playing);
     if (!this.#playing) {
       if (this.#lastPlayheadStep !== -1) {
         this.#setPlayhead(this.#lastPlayheadStep, false);

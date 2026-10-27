@@ -270,7 +270,10 @@
   font-size: clamp(15px, calc(var(--dim) * 0.04), 32px);
 }
 
-.arp-stage .arp-play {
+/* hover and disabled too: the generic button rules above would otherwise shrink it under the cursor */
+.arp-stage .arp-play,
+.arp-stage .arp-play:hover,
+.arp-stage .arp-play:disabled {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -448,7 +451,9 @@
     --arp-strip: 160px;
   }
 
-  .arp-stage .arp-play {
+  .arp-stage .arp-play,
+  .arp-stage .arp-play:hover,
+  .arp-stage .arp-play:disabled {
     width: 64px;
     height: 64px;
     margin: -32px 0 0 -32px;

@@ -1,6 +1,6 @@
 // Web Audio synthesizer and lookahead scheduler for Web Tempo Sync demo.
 
-import { hub } from '../../hub.js';
+import { isPlayingAt } from '../../hub.js';
 
 let sharedNoiseBuffer = null;
 
@@ -232,7 +232,7 @@ export class AudioEngine {
   #metronome = false;
   #metronomeVolume = 0.6;
   #nextBeatToSchedule = null;
-  // Whether the transport was playing at the last tick, for hub.isPlayingAt().
+  // Whether the transport was playing at the last tick, for isPlayingAt().
   #transportPlaying = false;
   #onStepCallback = null;
 
@@ -383,7 +383,7 @@ export class AudioEngine {
 
     const currentBeat = state.beatAtTime(tCurrent, quantum);
     const wasPlaying = this.#transportPlaying;
-    this.#transportPlaying = hub.isPlayingAt(state, tCurrent, wasPlaying);
+    this.#transportPlaying = isPlayingAt(state, tCurrent, wasPlaying);
 
     // Initialize or resync nextBeatToSchedule if out of sync
     if (this.#nextBeatToSchedule === null ||
@@ -400,7 +400,7 @@ export class AudioEngine {
       }
 
       // A stop, like a start, takes effect at its bar line, so keep playing until then.
-      const shouldPlayBeats = hub.isPlayingAt(state, beatTime + 0.005, wasPlaying);
+      const shouldPlayBeats = isPlayingAt(state, beatTime + 0.005, wasPlaying);
 
       if (shouldPlayBeats && beatTime >= tCurrent - 0.005) {
         // Step in 16-step pattern (16 steps = 4 beats)

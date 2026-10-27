@@ -17,10 +17,12 @@
 // The arpeggios tab: Chrome Music Lab's Arpeggios, on the page's shared Tone.js, playing in
 // time with the session. Ported from app/Main.js, app/chord/Chord.js, app/part/PlayButton.js,
 // app/part/Part.js and app/sound/Interface.js. Modified in 2026 for the Web Tempo Sync demo:
-// mounted in a tab rather than a page of its own; play and stop go through the shared
-// Transport, which follows the session; the tempo dial sets the session's tempo; the notes are
+// mounted in a tab rather than a page of its own; the shared Transport follows the session; play
+// and stop start or stop this tool on the session's bar line (and start the session if it's
+// stopped); the tempo dial sets the session's tempo; the notes are
 // scheduled from the Transport's position, so the pattern's bar lands on the session's.
 
+import { PlaySwitch } from '../../hub.js';
 import { getTone } from '../tone/runtime.js';
 import { NOTES, PATTERNS, LOOP_BEATS, MAJOR_ORDER } from './data.js';
 import { ChordWheel } from './chord.js';
@@ -124,9 +126,9 @@ export async function mount(panel, hub) {
 
   panel.replaceChildren(
     section('01', 'play', 'arp-play-label', noSession, el('div', { class: 'arp-frame' }, stage), status,
-      el('p', { class: 'help', text: 'Tap a chord on the wheel; the arpeggio plays its notes. Swipe the pattern, or use the arrows, for another one. Play starts on the session’s next bar line, or at once when you are alone, and Stop waits for the bar line too. The metronome button opens the tempo dial, which sets the session’s tempo.' })),
+      el('p', { class: 'help', text: 'Tap a chord on the wheel; the arpeggio plays its notes. Swipe the pattern, or use the arrows, for another one. Play starts the session on its next bar line, or at once when you are alone. While the session plays, Play and Stop start and stop just the arpeggio, on the next bar line, and anything else playing carries on. The metronome button opens the tempo dial, which sets the session’s tempo.' })),
     section('02', 'how', 'arp-how-label',
-      el('p', { class: 'soft', text: 'The experiment runs on the page’s one Tone.js Transport, shared with the tone.js tab, which follows the session through the fork’s syncTempoSession(). Its Play and Stop are the Transport’s start() and stop(), its tempo dial is the Transport’s bpm, and each note is scheduled from the Transport’s position, so a pattern starts on every bar line of the session.' }),
+      el('p', { class: 'soft', text: 'The experiment runs on the page’s one Tone.js Transport, shared with the tone.js tab, which follows the session through the fork’s syncTempoSession(). With the session stopped, its Play is the Transport’s start(); while it plays, Play and Stop only mute or unmute this tool from the next bar line. Its tempo dial is the Transport’s bpm, and each note is scheduled from the Transport’s position, so a pattern starts on every bar line of the session.' }),
       el('p', { class: 'help' },
         'From ', el('a', { href: 'https://musiclab.chromeexperiments.com/Arpeggios', text: 'Chrome Music Lab' }),
         ' by Google, Apache-2.0. The harp and piano are synthesized here. Credits, changes and licenses: ',
@@ -206,12 +208,16 @@ export async function mount(panel, hub) {
     }
   });
 
-  // PlayButton.js: through the shared Transport, which the fork commits to the session. With
-  // no session yet, the button joins one first: it's a click, so it may.
+  // PlayButton.js. With the session stopped, Play starts the shared Transport, which the fork
+  // commits to the session. While it plays, the button only starts or stops this tool, on the
+  // next bar line: the sampler or another window keeps playing. With no session yet, the button
+  // joins one first: it's a click, so it may.
+  const own = new PlaySwitch();
   playBtn.addEventListener('click', async (e) => {
     e.preventDefault();
     runtime.resume();
-    if (!sync) {
+    const joining = !sync;
+    if (joining) {
       try {
         await hub.connect();
       } catch (err) {
@@ -223,13 +229,16 @@ export async function mount(panel, hub) {
       return;
     }
     const state = sync.captureState();
-    if (state.isPlaying) {
-      // on the next bar line, as the session bar and the tone.js tab do
-      transport.stop(transport.nextSubdivision('1m') || undefined);
-      hub.log('Arpeggios: stop on the next bar');
-    } else {
+    if (joining && state.isPlaying) {
+      own.set(true, audio.currentTime); // joining a playing session is playing along
+      return;
+    }
+    const did = hub.toggleTool(own, state, audio.currentTime);
+    if (did === 'start') {
       transport.start();
       hub.log('Arpeggios: Transport.start(), on the next bar line');
+    } else {
+      hub.log(`Arpeggios: ${did === 'on' ? 'plays' : 'stops'} from the next bar; the session plays on`);
     }
   });
 
@@ -276,7 +285,7 @@ export async function mount(panel, hub) {
       sound.tick(time);
     }
     const index = parts.index;
-    const hits = byTick[index].get(pos);
+    const hits = own.playingAt(time) ? byTick[index].get(pos) : null;
     if (!hits) {
       return;
     }
@@ -346,14 +355,20 @@ export async function mount(panel, hub) {
     let pending = false;
     if (sync) {
       const state = sync.captureState();
-      const wait = state.timeForIsPlaying - audio.currentTime;
-      pending = wait > 0.05;
-      playing = state.isPlaying && !pending;
-      iconName = state.isPlaying ? 'pause' : 'play';
-      if (pending) {
+      const now = audio.currentTime;
+      const wait = state.timeForIsPlaying - now;
+      const ownWait = state.isPlaying ? own.wait(now) : 0;
+      pending = wait > 0.05 || ownWait > 0.05;
+      playing = state.isPlaying && wait <= 0.05 && own.playingAt(heard);
+      iconName = state.isPlaying && own.on ? 'pause' : 'play';
+      if (ownWait > 0.05) {
+        text = `${own.on ? 'Starts' : 'Stops'} on the bar line, in ${ownWait.toFixed(1)} s`;
+      } else if (wait > 0.05) {
         text = `${state.isPlaying ? 'Starts' : 'Stops'} on the bar line, in ${wait.toFixed(1)} s`;
-      } else if (state.isPlaying) {
+      } else if (state.isPlaying && own.on) {
         text = `Playing at ${state.tempo.toFixed(1)} bpm`;
+      } else if (state.isPlaying) {
+        text = `Stopped; the session plays on at ${state.tempo.toFixed(1)} bpm`;
       } else {
         text = `Stopped · ${state.tempo.toFixed(1)} bpm`;
       }

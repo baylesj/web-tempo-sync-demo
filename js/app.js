@@ -1,9 +1,9 @@
 // Page controller: the navbar's tabs, the session bar, and the log. Each tool tab (play) is a
-// module that loads the first time it's shown and keeps running when hidden; they share the
-// hub's session, and the session bar shows only on them. The read tabs load the proposal's
-// documents (docs.js).
+// module that loads the first time it's shown and keeps running when hidden. Each tool group has
+// its own session (hub.js), joined and left on its own; the session bar shows the one for the tab
+// you're on, and only on the play tabs. The read tabs load the proposal's documents (docs.js).
 
-import { hub } from './hub.js';
+import { apiAvailable, hubFor } from './hub.js';
 import { highlightAll } from './highlight.js';
 import { mountDoc } from './docs.js';
 import { aboutSection } from './tools/about.js';
@@ -21,6 +21,11 @@ const TOOLS = {
   arpeggios: () => import('./tools/arpeggios/index.js'),
 };
 
+// Which session each tool uses. Tone.js and Arpeggios share one Tone Transport, which can only
+// follow one session, so they join and leave together.
+const GROUP = { sampler: 'sampler', strudel: 'strudel', hydra: 'hydra', tone: 'tone', arpeggios: 'tone' };
+const GROUP_NAME = { sampler: 'sampler', strudel: 'strudel', hydra: 'hydra', tone: 'tone.js and arpeggios' };
+
 const $ = (id) => document.getElementById(id);
 const el = {
   statusDot: $('status-dot'),
@@ -33,6 +38,7 @@ const el = {
   playStopBtn: $('play-stop-btn'),
   connectBtn: $('connect-btn'),
   openWindowBtn: $('open-window-btn'),
+  focusBtn: $('focus-btn'),
   sessionBar: document.querySelector('.session-bar'),
   tabButtons: [...document.querySelectorAll('.nav-tabs [data-tab]')],
   eventLog: $('event-log'),
@@ -41,6 +47,8 @@ const el = {
 const panels = Object.fromEntries(el.tabButtons.map((b) => [b.dataset.tab, $(`tab-${b.dataset.tab}`)]));
 const mounted = new Map();
 let playLabel = '';
+// The hub the session bar shows: the active play tab's.
+let bar = hubFor('sampler');
 
 // --- Log ---
 
@@ -70,7 +78,9 @@ function log(message, tag = 'info') {
     list.scrollTop = list.scrollHeight;
   }
 }
-hub.addEventListener('log', (e) => log(e.detail.message, e.detail.tag));
+for (const group of new Set(Object.values(GROUP))) {
+  hubFor(group).addEventListener('log', (e) => log(`${group}: ${e.detail.message}`, e.detail.tag));
+}
 el.clearLogBtn.addEventListener('click', () => el.eventLog.replaceChildren());
 
 // --- Tabs ---
@@ -94,7 +104,7 @@ async function mountTool(name) {
   }
   try {
     const tool = await TOOLS[name]();
-    await tool.mount(panel, hub);
+    await tool.mount(panel, hubFor(GROUP[name]));
     // After mount, which fills the panel: what the tool is, and how it was made to play in time.
     const about = aboutSection(name);
     if (about) {
@@ -124,6 +134,11 @@ function switchTab(name, { updateHash = true } = {}) {
     panel.hidden = key !== name;
   }
   el.sessionBar.hidden = !(name in TOOLS);
+  if (name in TOOLS) {
+    bindBar(hubFor(GROUP[name]));
+  } else {
+    setFocus(false);
+  }
   if (updateHash) {
     history.replaceState(null, '', name === DEFAULT_TAB ? location.pathname + location.search : `#${name}`);
   }
@@ -152,6 +167,40 @@ el.openWindowBtn.addEventListener('click', () => {
   window.open(url, '_blank', 'noopener,width=1100,height=900');
 });
 
+// --- Focus ---
+// A tool fills the tab: no header, navbar, about section or footer, just a slim session strip over
+// the tool (Hydra's visuals fill the whole tab). It's in the URL (?focus), so a window opened with
+// New window, or a link, starts focused. F toggles it on a tool tab; Esc leaves.
+
+function setFocus(on) {
+  on = Boolean(on) && tabFromHash() in TOOLS;
+  document.documentElement.toggleAttribute('data-focus', on);
+  el.focusBtn.setAttribute('aria-pressed', String(on));
+  const url = new URL(location.href);
+  if (on) {
+    url.searchParams.set('focus', '');
+  } else {
+    url.searchParams.delete('focus');
+  }
+  history.replaceState(null, '', url.href.replace(/([?&])focus=(?=&|#|$)/, '$1focus'));
+}
+
+el.focusBtn.addEventListener('click', () => setFocus(!document.documentElement.hasAttribute('data-focus')));
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) {
+    return;
+  }
+  if (e.target instanceof Element && e.target.closest('input, select, textarea, [contenteditable], .cm-editor')) {
+    return;
+  }
+  if (e.key === 'Escape' && document.documentElement.hasAttribute('data-focus')) {
+    setFocus(false);
+  } else if ((e.key === 'f' || e.key === 'F') && tabFromHash() in TOOLS) {
+    e.preventDefault();
+    setFocus(!document.documentElement.hasAttribute('data-focus'));
+  }
+});
+
 // --- Session bar ---
 
 function renderSession(session) {
@@ -159,7 +208,7 @@ function renderSession(session) {
   el.connectBtn.classList.toggle('quiet', Boolean(session));
   el.playStopBtn.disabled = !session;
   el.playStopBtn.classList.toggle('quiet', !session);
-  el.apiText.textContent = session ? hub.source : '';
+  el.apiText.textContent = session ? bar.source : '';
   renderPeers(session);
   if (session) {
     syncTempoUI(session.captureState().tempo);
@@ -176,7 +225,7 @@ function renderPeers(session) {
     el.statusText.textContent = 'Playing along';
   } else {
     el.statusDot.className = 'dot warn';
-    el.statusText.textContent = hub.source === 'stand-in' ? 'Alone: open a second window' : 'Alone: turn on Link in Live';
+    el.statusText.textContent = bar.source === 'stand-in' ? 'Alone: join another tool, or open a window' : 'Alone: join another tool, or turn on Link in Live';
   }
 }
 
@@ -190,40 +239,68 @@ function syncTempoUI(bpm) {
   el.tempoInput.value = rounded.toFixed(1);
 }
 
+// The session bar follows one hub at a time: the active play tab's. Switching tabs rebinds it, so
+// Connect, the status, tempo, bar length and Play all act on that tool's session.
 let unwatch = () => {};
-hub.onSession((session) => {
-  unwatch();
-  renderSession(session);
-  if (!session) {
-    unwatch = () => {};
+let unwatchHub = () => {};
+let bound = null;
+
+function bindBar(h) {
+  if (h === bound) {
     return;
   }
-  const onTimeline = () => {
-    const { tempo } = session.captureState();
-    syncTempoUI(tempo);
-    log(`Tempo ${tempo.toFixed(2)} bpm`, 'tempo');
-  };
-  const onPlaying = () => log(session.captureState().isPlaying ? 'Playing' : 'Stopped', 'playing');
-  const onPeers = () => {
-    renderPeers(session);
-    log(session.hasPeers ? 'Someone is playing along' : 'No one else is in the session', 'peers');
-  };
-  session.addEventListener('timelinechange', onTimeline);
-  session.addEventListener('playingchange', onPlaying);
-  session.addEventListener('peerschange', onPeers);
-  unwatch = () => {
-    session.removeEventListener('timelinechange', onTimeline);
-    session.removeEventListener('playingchange', onPlaying);
-    session.removeEventListener('peerschange', onPeers);
-  };
-});
+  unwatchHub();
+  bound = h;
+  bar = h;
+  el.quantumSelect.value = String(h.quantum);
+  unwatchHub = h.onSession((session) => {
+    unwatch();
+    renderSession(session);
+    if (!session) {
+      unwatch = () => {};
+      return;
+    }
+    const onTimeline = () => syncTempoUI(session.captureState().tempo);
+    const onPeers = () => renderPeers(session);
+    session.addEventListener('timelinechange', onTimeline);
+    session.addEventListener('peerschange', onPeers);
+    unwatch = () => {
+      session.removeEventListener('timelinechange', onTimeline);
+      session.removeEventListener('peerschange', onPeers);
+    };
+  });
+}
+
+// The log hears every group's session, whichever tab is showing.
+for (const group of new Set(Object.values(GROUP))) {
+  let stop = () => {};
+  hubFor(group).onSession((session) => {
+    stop();
+    stop = () => {};
+    if (!session) {
+      return;
+    }
+    const onTimeline = () => log(`${group}: tempo ${session.captureState().tempo.toFixed(2)} bpm`, 'tempo');
+    const onPlaying = () => log(`${group}: ${session.captureState().isPlaying ? 'playing' : 'stopped'}`, 'playing');
+    const onPeers = () => log(`${group}: ${session.hasPeers ? 'someone is playing along' : 'no one else is in the session'}`, 'peers');
+    session.addEventListener('timelinechange', onTimeline);
+    session.addEventListener('playingchange', onPlaying);
+    session.addEventListener('peerschange', onPeers);
+    stop = () => {
+      session.removeEventListener('timelinechange', onTimeline);
+      session.removeEventListener('playingchange', onPlaying);
+      session.removeEventListener('peerschange', onPeers);
+    };
+  });
+}
 
 async function connect() {
+  const h = bar;
   el.connectBtn.disabled = true;
   el.connectBtn.textContent = 'Connecting…';
   try {
-    const session = await hub.connect();
-    log(`Joined the session through ${hub.source === 'stand-in' ? 'the stand-in' : `navigator.tempoSync (${hub.source})`}; ${session.hasPeers ? 'someone is playing along' : 'no one else yet'}`, 'session');
+    const session = await h.connect();
+    log(`${GROUP_NAME[h.name]} joined the session through ${h.source === 'stand-in' ? 'the stand-in' : `navigator.tempoSync (${h.source})`}; ${session.hasPeers ? 'someone is playing along' : 'no one else yet'}`, 'session');
   } catch (err) {
     console.error('Could not join the tempo session:', err);
     el.statusDot.className = 'dot err';
@@ -236,9 +313,9 @@ async function connect() {
 }
 
 el.connectBtn.addEventListener('click', () => {
-  if (hub.session) {
-    hub.disconnect();
-    log('Left the session', 'session');
+  if (bar.session) {
+    bar.disconnect();
+    log(`${GROUP_NAME[bar.name]} left the session`, 'session');
   } else {
     connect();
   }
@@ -247,33 +324,34 @@ el.connectBtn.addEventListener('click', () => {
 function onTempoInput(bpm) {
   const clamped = Math.max(TEMPO_MIN, Math.min(TEMPO_MAX, bpm));
   syncTempoUI(clamped);
-  hub.setTempo(clamped);
+  bar.setTempo(clamped);
 }
 el.tempoSlider.addEventListener('input', (e) => onTempoInput(Number(e.target.value)));
 el.tempoInput.addEventListener('change', (e) => onTempoInput(Number(e.target.value)));
 
 el.quantumSelect.addEventListener('change', async () => {
   const quantum = Number(el.quantumSelect.value);
-  log(`Bar of ${quantum} beats${hub.session ? ', rejoining' : ''}`, 'info');
-  await hub.setQuantum(quantum);
+  log(`${GROUP_NAME[bar.name]}: bar of ${quantum} beats${bar.session ? ', rejoining' : ''}`, 'info');
+  await bar.setQuantum(quantum);
   renderBeatDots(quantum);
 });
 
 function togglePlaying() {
-  const session = hub.session;
+  const session = bar.session;
   if (!session) {
     return;
   }
   const willPlay = !session.captureState().isPlaying;
-  const wait = hub.requestPlaying(willPlay);
-  log(`${willPlay ? 'Play' : 'Stop'} on the next bar, in ${wait.toFixed(2)} s`, 'playing');
+  const wait = bar.requestPlaying(willPlay);
+  log(`${GROUP_NAME[bar.name]}: ${willPlay ? 'play' : 'stop'} on the next bar, in ${wait.toFixed(2)} s`, 'playing');
 }
 el.playStopBtn.addEventListener('click', togglePlaying);
 
 // Space toggles Play/Stop, like Live, on the play tabs (elsewhere it scrolls). Not while typing,
-// and not on a focused button, where space already presses it. Tools with their own editors (Strudel, Hydra) are text fields, so they keep it.
+// and not on a focused button, where space already presses it. Tools with their own editors
+// (Strudel, Hydra) are text fields, so they keep it.
 document.addEventListener('keydown', (e) => {
-  if (e.code !== 'Space' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || !hub.session || el.sessionBar.hidden) {
+  if (e.code !== 'Space' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || !bar.session || el.sessionBar.hidden) {
     return;
   }
   if (e.target instanceof Element && e.target.closest('input, select, textarea, button, [contenteditable], .cm-editor')) {
@@ -287,7 +365,7 @@ document.addEventListener('keydown', (e) => {
 // so while one is pending the button counts down to it, whoever committed it.
 function frame() {
   requestAnimationFrame(frame);
-  const session = hub.session;
+  const session = bar.session;
   let label = 'Play';
   let lit = -1;
   if (session) {
@@ -311,9 +389,10 @@ function frame() {
 requestAnimationFrame(frame);
 
 highlightAll();
-renderSession(null);
+bindBar(bar);
 switchTab(tabFromHash(), { updateHash: false });
-log(hub.available ? 'navigator.tempoSync is available. Press Connect to join.' : 'No navigator.tempoSync here; Connect uses the stand-in, which syncs this browser’s tabs.', 'info');
+setFocus(new URLSearchParams(location.search).has('focus'));
+log(apiAvailable() ? 'navigator.tempoSync is available. Press Connect to join.' : 'No navigator.tempoSync here; Connect uses the stand-in, which syncs this browser’s tabs.', 'info');
 if (new URLSearchParams(location.search).get('autoconnect') === '1') {
   connect();
 }

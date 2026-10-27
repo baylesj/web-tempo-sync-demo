@@ -1,4 +1,4 @@
-/* The hydra tab. Tokens and base styles come from bayl.es-style and css/style.css. */
+/* The hydra tab. Tokens and base styles come from css/base.css (bayl.es-style on bayl.es) and css/style.css. */
 
 .hydra-stage {
   position: relative;
@@ -152,4 +152,79 @@
     padding: 12px;
     font-size: 13px;
   }
+}
+
+/* Focus (the page's ?focus): the visuals fill the whole tab, edge to edge, and the editor floats
+   over them, as in Hydra's own editor. Over moving pictures the text is always light, on a dark
+   veil, whatever the page's theme; the session strip stays on top. The time section and readout
+   step aside (the session strip shows the beat). */
+html[data-focus] #tab-hydra .hydra-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+html[data-focus] #tab-hydra .hydra-canvas {
+  width: 100vw;
+  height: 100vh;
+  aspect-ratio: auto;
+}
+
+html[data-focus] #tab-hydra > .split:not(.tool-about) {
+  position: relative;
+  z-index: 1;
+  display: block;
+  padding: 0;
+  border: 0;
+}
+
+html[data-focus] #tab-hydra > .split[aria-labelledby="hydra-time-label"],
+html[data-focus] #tab-hydra .hydra-readout,
+html[data-focus] #tab-hydra .help {
+  display: none;
+}
+
+html[data-focus] #tab-hydra .stack {
+  max-width: min(720px, 100%);
+  --ink: #f0f3f6;
+  --soft: #c9d1d9;
+  --line: rgb(255 255 255 / 18%);
+  --field: rgb(0 0 0 / 55%);
+  /* The dark palette's syntax colours, for code on the visuals. */
+  --comment: #9198a1;
+  --teal: #4493f8;
+  --purple: #ab7df8;
+  --green: #3fb950;
+  --orange: #db6d28;
+  --amber-text: #d29922;
+  color: var(--ink);
+}
+
+html[data-focus] #tab-hydra .hydra-editor {
+  max-height: calc(100vh - 220px);
+  backdrop-filter: blur(2px);
+}
+
+html[data-focus] #tab-hydra .hydra-output {
+  background: rgb(0 0 0 / 70%);
+}
+
+html[data-focus]:has(#tab-hydra:not([hidden])) .sticky-top {
+  background: transparent;
+}
+
+html[data-focus]:has(#tab-hydra:not([hidden])) .session-bar {
+  background: rgb(13 17 23 / 72%);
+  backdrop-filter: blur(6px);
+  border-color: rgb(255 255 255 / 18%);
+  --ink: #f0f3f6;
+  --soft: #c9d1d9;
+  --comment: #aab4be;
+  --line: rgb(255 255 255 / 22%);
+  --ground: rgb(13 17 23 / 70%);
+  --field: rgb(255 255 255 / 10%);
+  color: var(--ink);
+  color-scheme: dark;
 }

@@ -107,7 +107,8 @@ export async function mount(panel, hub) {
         <p class="help">
           <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (<kbd>⌘</kbd>+<kbd>Enter</kbd> on a Mac) runs or updates the code;
           <kbd>Ctrl</kbd>+<kbd>.</kbd> stops. If the session is stopped, Run starts it on the next bar line, for
-          everyone. Stop, here or in the session bar, stops everyone on the next bar line.
+          everyone. Stop here stops just Strudel on the next bar line, and anything else playing carries on; the
+          session bar's Stop stops everyone.
         </p>
       </div>
     </section>
@@ -254,6 +255,7 @@ export async function mount(panel, hub) {
   const ticksKey = 'num_ticks_since_checkpoint' in sch ? 'num_ticks_since_checkpoint' : 'num_ticks_since_cps_change';
 
   let armed = false; // Run was pressed, and Stop hasn't been since
+  let stopAt = null; // Stop while the session plays: Strudel alone stops, on this bar line
   let starting = false;
   let origin = null; // the session's beat (in this page's numbering) at cycle 0
   let ownCps = sch.cps; // the cps this tool last set; anything else came from the code
@@ -324,7 +326,14 @@ export async function mount(panel, hub) {
         gate.from = 0;
       }
       gate.to = Infinity;
-      if (!armed && sch.started) {
+      if (!armed && sch.started && stopAt !== null) {
+        const at = (state.beatAtTime(stopAt, q) - origin) / q;
+        gate.to = Math.abs(at - Math.round(at)) < 1e-6 ? Math.round(at) : at;
+        if (now >= stopAt) {
+          rawStop();
+          stopAt = null;
+        }
+      } else if (!armed && sch.started) {
         rawStop();
       } else if (armed && ctx && !sch.started && !starting) {
         starting = true;
@@ -420,6 +429,7 @@ export async function mount(panel, hub) {
   async function play() {
     wakeAudio();
     armed = true;
+    stopAt = null;
     if (!session) {
       try {
         await hub.connect();
@@ -438,12 +448,17 @@ export async function mount(panel, hub) {
     follow();
   }
 
+  // Stop stops Strudel, not the session: anything else playing carries on. The session bar's
+  // Play/Stop is everyone's.
   function stop() {
     armed = false;
     const s = capture();
-    if (s?.isPlaying) {
-      hub.requestPlaying(false, ctx);
+    if (s?.isPlaying && sch.started && origin !== null) {
+      const now = hub.now(ctx);
+      stopAt = hub.nextBarTime(s, now);
+      hub.log(`Strudel stops in ${(stopAt - now).toFixed(2)} s, on the next bar; the session plays on`);
     } else if (sch.started) {
+      stopAt = null;
       rawStop();
     }
     follow();
