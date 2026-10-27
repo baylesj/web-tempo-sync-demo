@@ -7,16 +7,16 @@
     <meta name="description" content="Web pages that play in time with Ableton Link apps, hardware and each other, through the proposed Web Tempo Sync API." />
     <link rel="icon" type="image/svg+xml" href="https://cdn.jsdelivr.net/gh/baylesj/bayl.es-style@v1.12.2/icons/home.svg" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500&family=Schibsted+Grotesk:wght@400..700&family=Fira+Code:wght@400;500&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:ital,wght@0,400..700;1,400&family=Atkinson+Hyperlegible+Mono:wght@400..600&display=swap" />
     <script src="https://cdn.jsdelivr.net/gh/baylesj/bayl.es-style@v1.12.2/js/theme.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/baylesj/bayl.es-style@v1.12.2/dist/eopsin.min.css" />
+    <link rel="stylesheet" href="css/base.css" />
     <link rel="stylesheet" href="css/style.css" />
   </head>
   <body data-site="tempo">
     <main class="wide">
       <header class="top">
         <div>
-          <span class="prompt"><span class="u">guest</span>@eopsin:<span class="p">~/tempo-sync</span></span>
+          <span class="kicker">a proposed web API</span>
           <h1 class="mark">web tempo sync</h1>
         </div>
         <button class="theme-toggle" type="button"></button>
@@ -116,7 +116,7 @@
           <div class="stack">
             <p class="soft">No browser ships Web Tempo Sync yet. Three ways to try it:</p>
             <ul class="steps-list">
-              <li><strong>The extension, on stable Chrome</strong> (macOS): an extension and a small helper app that join Link sessions. <a href="/tempo-sync-demo-builds/extension-v0.2.0/web-tempo-sync-extension-0.2.0-macos.zip" download>Download it</a> (0.6 MB), then follow the <a href="#setup">install steps</a>.</li>
+              <li><strong>The extension, on stable Chrome</strong> (macOS): an extension and a small helper app that join Link sessions. <a href="https://github.com/baylesj/tempo-sync/releases/download/extension-v0.2.0/web-tempo-sync-extension-0.2.0-macos.zip" download>Download it</a> (0.6 MB), then follow the <a href="#setup">install steps</a>.</li>
               <li><strong>The prototype Chromium</strong> (macOS, Apple silicon): the API built into the browser. See <a href="#setup">setup</a>.</li>
               <li><strong>The stand-in</strong>, in any browser: without the API, this page uses a stand-in that syncs only this browser's tabs. The status line says which one you're using.</li>
             </ul>
@@ -233,9 +233,9 @@
               app that joins Link sessions.
             </p>
             <div class="actions">
-              <a class="btn" href="/tempo-sync-demo-builds/extension-v0.2.0/web-tempo-sync-extension-0.2.0-macos.zip" download>Download extension 0.2.0</a>
+              <a class="btn" href="https://github.com/baylesj/tempo-sync/releases/download/extension-v0.2.0/web-tempo-sync-extension-0.2.0-macos.zip" download>Download extension 0.2.0</a>
               <span class="help">macOS, Apple silicon and Intel · 0.6 MB ·
-                <a href="/tempo-sync-demo-builds/extension-v0.2.0/web-tempo-sync-extension-0.2.0-macos.zip.sha256">sha256</a></span>
+                <a href="https://github.com/baylesj/tempo-sync/releases/download/extension-v0.2.0/web-tempo-sync-extension-0.2.0-macos.zip.sha256">sha256</a></span>
             </div>
             <p class="help">
               Unzip it, then run these in Terminal from the unzipped folder. The helper isn't signed, so
@@ -260,26 +260,26 @@ extension/install-host.sh</code></pre>
               on the same laptop or local network.
             </p>
             <div class="actions">
-              <a class="btn" href="/tempo-sync-demo-builds/v0.2.0/Chromium-tempo-sync-v0.2.0-macos-arm64.zip" download>Download Chromium v0.2.0</a>
+              <a class="btn" href="https://github.com/baylesj/web-tempo-sync-demo/releases/download/v0.2.0/Chromium-tempo-sync-v0.2.0-macos-arm64.zip" download>Download Chromium v0.2.0</a>
               <span class="help">macOS, Apple silicon · 228 MB ·
-                <a href="/tempo-sync-demo-builds/v0.2.0/Chromium-tempo-sync-v0.2.0-macos-arm64.zip.sha256">sha256</a></span>
+                <a href="https://github.com/baylesj/web-tempo-sync-demo/releases/download/v0.2.0/Chromium-tempo-sync-v0.2.0-macos-arm64.zip.sha256">sha256</a></span>
             </div>
             <p class="help">
               The build isn't signed with an Apple developer ID, so macOS says it can't be trusted when it comes from
               a browser download. Downloading it in Terminal avoids that: <code>curl</code> doesn't mark files as
               downloaded from the internet, so there's nothing to clear.
             </p>
-            <pre class="code-snippet"><code data-lang="sh">curl -O https://bayl.es/tempo-sync-demo-builds/v0.2.0/Chromium-tempo-sync-v0.2.0-macos-arm64.zip
+            <pre class="code-snippet"><code data-lang="sh">curl -LO https://github.com/baylesj/web-tempo-sync-demo/releases/download/v0.2.0/Chromium-tempo-sync-v0.2.0-macos-arm64.zip
 ditto -x -k Chromium-tempo-sync-v0.2.0-macos-arm64.zip .
 ./Chromium.app/Contents/MacOS/Chromium \
   --enable-blink-features=TempoSync \
-  "https://bayl.es/tempo-sync/?autoconnect=1"</code></pre>
+  "https://baylesj.github.io/web-tempo-sync-demo/?autoconnect=1"</code></pre>
             <p class="help">
               Downloaded with the button instead? Clear the quarantine flag first, from the folder you unzipped it in:
               <code>xattr -cr Chromium.app</code>. Without it, macOS won't open it.
             </p>
             <p class="help">
-              The earlier <a href="/tempo-sync-demo-builds/v0.1.0/Chromium-tempo-sync-macos-arm64.zip">v0.1.0</a>
+              The earlier <a href="https://github.com/baylesj/web-tempo-sync-demo/releases/download/v0.1.0/Chromium-tempo-sync-macos-arm64.zip">v0.1.0</a>
               implements an older draft of the API; this page adapts it, and the status line shows
               <code>browser v0.1</code>.
             </p>
@@ -440,9 +440,8 @@ interface TempoSessionState {
       </details>
 
       <footer>
-        <span><a href="https://bayl.es">bayl.es</a></span>
-        <a href="source.tar.gz">source (AGPL-3.0)</a>
-        <a href="https://style.bayl.es">style.bayl.es</a>
+        <span><a href="https://github.com/baylesj/web-tempo-sync-demo">source (AGPL-3.0)</a> · <a href="https://github.com/baylesj/web-tempo-sync">spec</a> · <a href="https://github.com/baylesj/tempo-sync">implementation</a></span>
+        <a href="https://style.bayl.es">bayl.es-style</a>
       </footer>
     </main>
 

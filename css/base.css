@@ -1,0 +1,485 @@
+/*
+ * Base styles for the GitHub Pages site: a W3C/GitHub look in Atkinson Hyperlegible.
+ *
+ * Same class and token names as bayl.es-style (which bayl.es/tempo-sync/ uses), so the page's own
+ * css/style.css and every tool's stylesheet work on either. Colours are GitHub's Primer palette; the
+ * bayl.es role names (--teal for links, --purple, --green, ...) map onto Primer's roles. Light and
+ * dark follow the system, or data-theme="light"/"dark" on <html> (set by the theme toggle).
+ */
+
+@layer tokens, base, components, utilities;
+
+@layer tokens {
+  :root {
+    color-scheme: light dark;
+    --sans: "Atkinson Hyperlegible Next", -apple-system, system-ui, "Segoe UI", sans-serif;
+    --mono: "Atkinson Hyperlegible Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+    /* Primer light. */
+    --ink: #1f2328;
+    --soft: #59636e;
+    --comment: #59636e;
+    --line: #d1d9e0;
+    --ground: #ffffff;
+    --field: #f6f8fa;
+    --accent: #0969da;
+    --accent-fill: #0969da;
+    --teal: #0969da;
+    --teal-bright: #0969da;
+    --green: #1a7f37;
+    --green-bright: #1f883d;
+    --purple: #8250df;
+    --pink: #bf3989;
+    --amber: #bf8700;
+    --amber-text: #9a6700;
+    --orange: #bc4c00;
+    --orange-bright: #cf222e;
+    --on-sig: #ffffff;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      /* Primer dark. */
+      --ink: #e6edf3;
+      --soft: #9198a1;
+      --comment: #9198a1;
+      --line: #3d444d;
+      --ground: #0d1117;
+      --field: #151b23;
+      --accent: #4493f8;
+      --accent-fill: #1f6feb;
+      --teal: #4493f8;
+      --teal-bright: #1f6feb;
+      --green: #3fb950;
+      --green-bright: #238636;
+      --purple: #ab7df8;
+      --pink: #db61a2;
+      --amber: #d29922;
+      --amber-text: #d29922;
+      --orange: #db6d28;
+      --orange-bright: #f85149;
+      --on-sig: #ffffff;
+    }
+  }
+
+  :root[data-theme="light"] {
+    color-scheme: light;
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ink: #e6edf3;
+    --soft: #9198a1;
+    --comment: #9198a1;
+    --line: #3d444d;
+    --ground: #0d1117;
+    --field: #151b23;
+    --accent: #4493f8;
+    --accent-fill: #1f6feb;
+    --teal: #4493f8;
+    --teal-bright: #1f6feb;
+    --green: #3fb950;
+    --green-bright: #238636;
+    --purple: #ab7df8;
+    --pink: #db61a2;
+    --amber: #d29922;
+    --amber-text: #d29922;
+    --orange: #db6d28;
+    --orange-bright: #f85149;
+    --on-sig: #ffffff;
+  }
+
+  /* The signature is the link blue, as on W3C and GitHub pages. */
+  :root {
+    --sig: var(--accent);
+    --sig2: var(--purple);
+    --sig-text: var(--accent);
+    --sig-fill: var(--accent-fill);
+    --sig2-fill: var(--purple);
+  }
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 16px/1.5 var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  main {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 32px 16px 56px;
+  }
+
+  main.wide {
+    max-width: 1080px;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  a:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent-fill);
+    outline-offset: 2px;
+  }
+
+  strong,
+  b {
+    font-weight: 600;
+  }
+
+  code,
+  kbd,
+  .mono {
+    font-family: var(--mono);
+  }
+
+  :not(pre) > code {
+    padding: 0.15em 0.4em;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--soft) 14%, transparent);
+    font-size: 0.85em;
+  }
+
+  footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 6px 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+    color: var(--comment);
+    font-size: 13px;
+  }
+
+  .lede {
+    font-size: 19px;
+    line-height: 1.5;
+  }
+
+  .soft {
+    color: var(--soft);
+    font-size: 15px;
+  }
+
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+  }
+
+  th,
+  td {
+    padding: 6px 13px;
+    border: 1px solid var(--line);
+    text-align: start;
+    vertical-align: top;
+  }
+
+  th {
+    background: var(--field);
+    font-weight: 600;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* The header: a plain title over a rule, as on a W3C document. */
+  .top {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .top > :first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .mark {
+    margin: 0;
+    color: var(--ink);
+    font-size: 40px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+  }
+
+  .label {
+    margin: 0 0 8px;
+    color: var(--soft);
+    font: 600 12px/1.4 var(--sans);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .label .n {
+    margin-right: 0.6em;
+    color: var(--accent);
+    font-family: var(--mono);
+  }
+
+  .split {
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1fr);
+    gap: 8px 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+
+  .split > .label {
+    margin: 0;
+    line-height: 1.8;
+  }
+
+  .rows {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .kv {
+    display: grid;
+    grid-template-columns: 140px minmax(0, 1fr);
+    gap: 4px 12px;
+    padding: 10px 0;
+    border-top: 1px solid var(--line);
+    font-size: 15px;
+  }
+
+  .kv > :first-child {
+    color: var(--soft);
+    font-size: 13px;
+  }
+
+  .dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 8px;
+    border-radius: 50%;
+    background: var(--comment);
+    vertical-align: 1px;
+  }
+
+  .dot.ok {
+    background: var(--green-bright);
+  }
+
+  .dot.warn {
+    background: var(--amber);
+  }
+
+  .dot.err {
+    background: var(--orange-bright);
+  }
+
+  label {
+    display: block;
+    margin: 0 0 6px;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  input,
+  select {
+    width: 100%;
+    min-height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--ground);
+    color: var(--ink);
+    font: inherit;
+    font-size: 14px;
+  }
+
+  input:focus-visible,
+  select:focus-visible {
+    outline-offset: -1px;
+    border-color: var(--accent-fill);
+  }
+
+  .help {
+    margin-top: 6px;
+    color: var(--soft);
+    font-size: 14px;
+  }
+
+  /* Buttons as on GitHub: the main action filled, the rest outlined on the subtle ground. */
+  .btn,
+  button {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    min-height: 32px;
+    padding: 0 16px;
+    border: 1px solid color-mix(in srgb, #000 15%, var(--accent-fill));
+    border-radius: 6px;
+    background: var(--accent-fill);
+    color: var(--on-sig);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .btn:hover,
+  button:hover {
+    color: var(--on-sig);
+    filter: brightness(1.08);
+    text-decoration: none;
+  }
+
+  .btn.quiet,
+  button.quiet {
+    border-color: var(--line);
+    background: var(--field);
+    color: var(--ink);
+  }
+
+  .btn.quiet:hover,
+  button.quiet:hover {
+    background: color-mix(in srgb, var(--soft) 12%, var(--field));
+    color: var(--ink);
+    filter: none;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    justify-content: center;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 0 6px;
+    border: 1px solid transparent;
+    background: none;
+    color: var(--soft);
+  }
+
+  .theme-toggle:hover {
+    border-color: var(--line);
+    color: var(--ink);
+    filter: none;
+  }
+
+  .theme-toggle:empty {
+    display: none;
+  }
+
+  .theme-toggle svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Segmented control: GitHub's, a row of outlined buttons with the chosen one filled. */
+  .seg {
+    display: flex;
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  .seg button {
+    min-height: 30px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    background: var(--ground);
+    color: var(--soft);
+    font: inherit;
+  }
+
+  .seg button:hover {
+    color: var(--ink);
+    filter: none;
+  }
+
+  .seg button.on {
+    border-color: var(--accent-fill);
+    background: color-mix(in srgb, var(--accent-fill) 10%, var(--ground));
+    color: var(--accent);
+  }
+
+  @media (width <= 480px) {
+    .mark {
+      font-size: 32px;
+    }
+
+    .kv,
+    .split {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}
+
+@layer utilities {
+  .muted {
+    color: var(--comment);
+  }
+
+  .num {
+    color: var(--purple);
+  }
+
+  .warn {
+    color: var(--amber-text);
+  }
+
+  .err {
+    color: var(--orange-bright);
+  }
+}

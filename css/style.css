@@ -1,18 +1,9 @@
 /*
- * Page styles for the tempo sync demo. Everything else comes from bayl.es-style (eopsin.min.css):
- * this file only adds the signature and what the system doesn't have (beat ring layout, step grid,
- * switch and event log). Unlayered, so it wins over the system's layers without !important.
+ * Page styles for the Web Tempo Sync demos. The base (tokens, type, buttons, forms, sections) is
+ * css/base.css, a W3C/GitHub look in Atkinson Hyperlegible with bayl.es-style's class names; this file
+ * adds what the base doesn't have (navbar, session bar, beat ring layout, step grid, switch, log).
+ * Unlayered, so it wins over the base's layers without !important.
  */
-
-/* Signature: purple fading into pink. Jordan's music sites are pink -> purple; this runs it the other
-   way round, so it reads as related without copying jordan.bayl.es or orbit. */
-[data-site="tempo"] {
-  --sig: var(--purple);
-  --sig2: var(--pink);
-  --sig-text: var(--purple);
-  --sig-fill: var(--purple);
-  --sig2-fill: var(--pink);
-}
 
 /* Disabled buttons: grey, never faded. */
 button:disabled,
@@ -22,6 +13,15 @@ button:disabled:hover {
   color: var(--comment);
   filter: none;
   cursor: default;
+}
+
+/* Where the bayl.es sites have their prompt line, this names what the site is about. */
+.kicker {
+  display: block;
+  color: var(--soft);
+  font: 600 13px var(--sans);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 /* Tab panels. */
@@ -471,7 +471,7 @@ button.step.now {
 .nav-section .nav-group {
   padding: 0 4px 0 4px;
   color: var(--grp-text);
-  font: 600 10px var(--mono);
+  font: 700 11px var(--sans);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -486,7 +486,7 @@ button.step.now {
   border-radius: 0;
   background: none;
   color: var(--soft);
-  font: 14px var(--mono);
+  font: 500 14px var(--sans);
   cursor: pointer;
 }
 
@@ -552,7 +552,7 @@ button.step.now {
 .sb-caption {
   margin: 0;
   color: var(--comment);
-  font: 11px var(--mono);
+  font: 600 11px var(--sans);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -862,6 +862,6 @@ article.doc td {
   }
 
   .top .mark {
-    font-size: clamp(30px, 10vw, 44px);
+    font-size: clamp(26px, 8vw, 32px);
   }
 }

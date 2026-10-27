@@ -2,7 +2,7 @@
 
 Part of **Web Tempo Sync**: [spec and explainer](https://github.com/baylesj/web-tempo-sync) · [implementation and extension](https://github.com/baylesj/tempo-sync) · [demo](https://github.com/baylesj/web-tempo-sync-demo) · [all repos](https://github.com/search?q=topic%3Aweb-tempo-sync+user%3Abaylesj&type=repositories)
 
-Live at **https://bayl.es/tempo-sync/**.
+Live at **https://baylesj.github.io/web-tempo-sync-demo/**, published by `.github/workflows/pages.yml` on every push to `main`. (It was at https://bayl.es/tempo-sync/, which will redirect here.)
 
 Web Tempo Sync is a proposed web API that lets a page play in time with music apps and hardware on the local network (anything that speaks Ableton Link) and with other pages. This site is its home: what it is, how to try it, and tools that use it, all sharing one session.
 
@@ -23,7 +23,7 @@ Each tool loads the first time its tab opens and keeps running when you switch a
 
 The page uses `navigator.tempoSync` when the browser has it, from the [extension](https://github.com/baylesj/tempo-sync/tree/main/extension) on stable Chrome or from the prototype Chromium build. Otherwise it uses a stand-in (`js/stand-in.js`) that follows the draft's model and syncs this browser's tabs over a `BroadcastChannel`. The session bar says which one is in use.
 
-The prototype Chromium v0.2.0 implements the current draft: https://bayl.es/tempo-sync-demo-builds/v0.2.0/Chromium-tempo-sync-v0.2.0-macos-arm64.zip ([sha256](https://bayl.es/tempo-sync-demo-builds/v0.2.0/Chromium-tempo-sync-v0.2.0-macos-arm64.zip.sha256); also on the [v0.2.0 release](https://github.com/baylesj/web-tempo-sync-demo/releases/tag/v0.2.0)). It isn't signed with an Apple developer ID, so download it with `curl` (which doesn't quarantine it) or run `xattr -cr Chromium.app` after a browser download; the setup tab has the steps. The older v0.1.0 implements an earlier draft, which `js/legacy.js` adapts, so every tool works on it too.
+The prototype Chromium v0.2.0 implements the current draft. It's on the [v0.2.0 release](https://github.com/baylesj/web-tempo-sync-demo/releases/tag/v0.2.0). It isn't signed with an Apple developer ID, so download it with `curl -LO` (which doesn't quarantine it) or run `xattr -cr Chromium.app` after a browser download; the setup tab has the steps. The older [v0.1.0](https://github.com/baylesj/web-tempo-sync-demo/releases/tag/v0.1.0) implements an earlier draft, which `js/legacy.js` adapts, so every tool works on it too.
 
 ## Layout
 
@@ -63,6 +63,6 @@ An experiment with Web MIDI input lives on the `midi` branch.
 
 ## License
 
-AGPL-3.0-or-later; see `LICENSE`. Every publish puts this commit's full source at https://bayl.es/tempo-sync/source.tar.gz (the footer's "source" link), and the Tone.js fork's at https://bayl.es/tempo-sync-demo-builds/source/, since this repository is private for now.
+AGPL-3.0-or-later; see `LICENSE`. The Strudel and Hydra tabs use AGPL-licensed libraries, so the whole site is AGPL and this repository is its source. The Tone.js and Chrome Music Lab code keeps its own licenses (MIT and Apache-2.0); see each tool's folder.
 
 **TODO:** make this repository (and `tempo-sync`, `web-tempo-sync`) public, then link the footer to GitHub and set up GitHub Pages. The Strudel and Hydra tabs use AGPL-licensed libraries, so the whole site is AGPL and this repository is its source. The Tone.js and Chrome Music Lab code keeps its own licenses (MIT and Apache-2.0); see each tool's folder.
