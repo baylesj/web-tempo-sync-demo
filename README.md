@@ -19,6 +19,8 @@ Web Tempo Sync is a proposed web API that lets a page play in time with music ap
 
 Each tool loads the first time its tab opens and keeps running when you switch away. **New window** opens the current tab on its own, to see separate pages sync too.
 
+Presenting it? [DEMO-SCRIPT.md](DEMO-SCRIPT.md) is a five-minute run with Ableton Live, with fallbacks and short answers to likely questions.
+
 ## Where the API comes from
 
 The page uses `navigator.tempoSync` when the browser has it, from the [extension](https://github.com/baylesj/tempo-sync/tree/main/extension) on stable Chrome or from the prototype Chromium build. Otherwise it uses a stand-in (`js/stand-in.js`) that follows the draft's model and syncs this browser's tabs over a `BroadcastChannel`. The session bar says which one is in use.
