@@ -1,5 +1,5 @@
 // The Web Tempo Sync API for browsers without it, following the draft's model
-// (https://bayl.es/web-tempo-sync/): participants share tempo, bar phase and start/stop, and
+// (https://baylesj.github.io/web-tempo-sync/): participants share tempo, bar phase and start/stop, and
 // each session numbers beats its own way.
 //
 // Like a browser, every session in this document shares one endpoint. Endpoints in other tabs

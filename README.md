@@ -2,7 +2,7 @@
 
 Part of **Web Tempo Sync**: [spec and explainer](https://github.com/baylesj/web-tempo-sync) · [implementation and extension](https://github.com/baylesj/tempo-sync) · [demo](https://github.com/baylesj/web-tempo-sync-demo) · [all repos](https://github.com/search?q=topic%3Aweb-tempo-sync+user%3Abaylesj&type=repositories)
 
-Live at **https://baylesj.github.io/web-tempo-sync-demo/**, published by `.github/workflows/pages.yml` on every push to `main`. (It was at https://bayl.es/tempo-sync/, which will redirect here.)
+Live at **https://baylesj.github.io/web-tempo-sync-demo/**, published by `.github/workflows/pages.yml` on every push to `main`. (It was at https://bayl.es/tempo-sync/, which redirects here.)
 
 Web Tempo Sync is a proposed web API that lets a page play in time with music apps and hardware on the local network (anything that speaks Ableton Link) and with other pages. This site is its home: what it is, how to try it, and tools that use it, all sharing one session.
 

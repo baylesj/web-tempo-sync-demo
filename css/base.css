@@ -1,7 +1,7 @@
 /*
  * Base styles for the GitHub Pages site: a W3C/GitHub look in Atkinson Hyperlegible.
  *
- * Same class and token names as bayl.es-style (which bayl.es/tempo-sync/ uses), so the page's own
+ * Same class and token names as bayl.es-style (which the old bayl.es copy of this site used), so the page's own
  * css/style.css and every tool's stylesheet work on either. Colours are GitHub's Primer palette; the
  * bayl.es role names (--teal for links, --purple, --green, ...) map onto Primer's roles. Light and
  * dark follow the system, or data-theme="light"/"dark" on <html> (set by the theme toggle).
