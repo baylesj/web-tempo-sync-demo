@@ -23,7 +23,7 @@ Each tool loads the first time its tab opens and keeps running when you switch a
 
 The page uses `navigator.tempoSync` when the browser has it, from the [extension](https://github.com/baylesj/tempo-sync/tree/main/extension) on stable Chrome or from the prototype Chromium build. Otherwise it uses a stand-in (`js/stand-in.js`) that follows the draft's model and syncs this browser's tabs over a `BroadcastChannel`. The session bar says which one is in use.
 
-The prototype Chromium v0.1.0 implements an earlier draft (`numPeers`, `tempochange`, one shared beat grid). `js/legacy.js` adapts it to the current draft, so every tool works on it too (the session bar says `browser v0.1`). It's at https://bayl.es/tempo-sync-demo-builds/v0.1.0/Chromium-tempo-sync-macos-arm64.zip ([sha256](https://bayl.es/tempo-sync-demo-builds/v0.1.0/Chromium-tempo-sync-macos-arm64.zip.sha256)); the setup tab has the steps.
+The prototype Chromium v0.2.0 implements the current draft: https://bayl.es/tempo-sync-demo-builds/v0.2.0/Chromium-tempo-sync-v0.2.0-macos-arm64.zip ([sha256](https://bayl.es/tempo-sync-demo-builds/v0.2.0/Chromium-tempo-sync-v0.2.0-macos-arm64.zip.sha256); also on the [v0.2.0 release](https://github.com/baylesj/web-tempo-sync-demo/releases/tag/v0.2.0)). It isn't signed with an Apple developer ID, so download it with `curl` (which doesn't quarantine it) or run `xattr -cr Chromium.app` after a browser download; the setup tab has the steps. The older v0.1.0 implements an earlier draft, which `js/legacy.js` adapts, so every tool works on it too.
 
 ## Layout
 

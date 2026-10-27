@@ -260,24 +260,29 @@ extension/install-host.sh</code></pre>
               on the same laptop or local network.
             </p>
             <div class="actions">
-              <a class="btn" href="/tempo-sync-demo-builds/v0.1.0/Chromium-tempo-sync-macos-arm64.zip" download>Download Chromium v0.1.0</a>
-              <span class="help">macOS, Apple silicon · 232 MB ·
-                <a href="/tempo-sync-demo-builds/v0.1.0/Chromium-tempo-sync-macos-arm64.zip.sha256">sha256</a></span>
+              <a class="btn" href="/tempo-sync-demo-builds/v0.2.0/Chromium-tempo-sync-v0.2.0-macos-arm64.zip" download>Download Chromium v0.2.0</a>
+              <span class="help">macOS, Apple silicon · 228 MB ·
+                <a href="/tempo-sync-demo-builds/v0.2.0/Chromium-tempo-sync-v0.2.0-macos-arm64.zip.sha256">sha256</a></span>
             </div>
             <p class="help">
-              v0.1.0 implements an earlier draft of the API (<code>numPeers</code>, <code>tempochange</code>, and one
-              beat grid for everyone). This page adapts it to the current draft, so every tool here works on it; the
-              status line shows <code>browser v0.1</code>. Other pages written for the current draft need a newer build.
+              The build isn't signed with an Apple developer ID, so macOS says it can't be trusted when it comes from
+              a browser download. Downloading it in Terminal avoids that: <code>curl</code> doesn't mark files as
+              downloaded from the internet, so there's nothing to clear.
             </p>
-            <p class="help">
-              Unzip it, then run the commands below from the same folder. The build isn't signed, so
-              <code>xattr -cr</code> clears macOS's quarantine flag first; without it, Gatekeeper won't open it.
-            </p>
-            <pre class="code-snippet"><code data-lang="sh">xattr -cr Chromium.app
+            <pre class="code-snippet"><code data-lang="sh">curl -O https://bayl.es/tempo-sync-demo-builds/v0.2.0/Chromium-tempo-sync-v0.2.0-macos-arm64.zip
+ditto -x -k Chromium-tempo-sync-v0.2.0-macos-arm64.zip .
 ./Chromium.app/Contents/MacOS/Chromium \
   --enable-blink-features=TempoSync \
-  --tempo-sync-engine=rust \
   "https://bayl.es/tempo-sync/?autoconnect=1"</code></pre>
+            <p class="help">
+              Downloaded with the button instead? Clear the quarantine flag first, from the folder you unzipped it in:
+              <code>xattr -cr Chromium.app</code>. Without it, macOS won't open it.
+            </p>
+            <p class="help">
+              The earlier <a href="/tempo-sync-demo-builds/v0.1.0/Chromium-tempo-sync-macos-arm64.zip">v0.1.0</a>
+              implements an older draft of the API; this page adapts it, and the status line shows
+              <code>browser v0.1</code>.
+            </p>
             <ol class="steps-list">
               <li>In Ableton Live 12, open <strong>Settings &gt; Link, Tempo &amp; MIDI</strong> and enable <strong>Show Link Toggle</strong> and <strong>Start/Stop Sync</strong>.</li>
               <li>Click the <strong>Link</strong> button in the top-left corner of Live.</li>
