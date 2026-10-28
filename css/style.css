@@ -506,16 +506,55 @@ button.step.now {
   }
 }
 
-/* Narrower still: one row that scrolls sideways, rather than wrapped rows. */
+/* Narrower still: one row that scrolls sideways, rather than wrapped rows. Without their names the
+   bands would read as a selected state, so the groups are split by hairlines instead, and only the
+   current tab is marked. The row fades out at whichever edge has more tabs past it (app.js sets
+   data-more), tabs snap into place, and each is a full 44px touch target. */
 @media (width <= 900px) {
   .nav-tabs {
     flex-wrap: nowrap;
+    gap: 0;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 24px;
     scrollbar-width: none;
+    --fade: 28px;
+  }
+
+  .nav-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-tabs[data-more="end"] {
+    mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent);
+  }
+
+  .nav-tabs[data-more="start"] {
+    mask-image: linear-gradient(to left, #000 calc(100% - var(--fade)), transparent);
+  }
+
+  .nav-tabs[data-more="both"] {
+    mask-image: linear-gradient(to right, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent);
   }
 
   .nav-section {
     flex: none;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+  }
+
+  .nav-section + .nav-section {
+    margin-left: 6px;
+    padding-left: 6px;
+    border-left: 1px solid var(--line);
+  }
+
+  .nav-tabs button {
+    min-height: 44px;
+    padding: 0 10px;
+    scroll-snap-align: start;
   }
 }
 

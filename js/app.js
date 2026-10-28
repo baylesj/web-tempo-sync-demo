@@ -120,6 +120,39 @@ async function mountTool(name) {
   }
 }
 
+// On narrow screens the tab row scrolls sideways: keep the current tab in view (a link straight to
+// #privacy shouldn't leave it off-screen), and mark which edges have more tabs past them for the fade.
+const tabRow = document.querySelector('.nav-tabs');
+
+function revealTab(btn) {
+  if (!btn || tabRow.scrollWidth <= tabRow.clientWidth) {
+    return;
+  }
+  const row = tabRow.getBoundingClientRect();
+  const tab = btn.getBoundingClientRect();
+  const margin = 32;
+  if (tab.left < row.left + margin || tab.right > row.right - margin) {
+    const left = tabRow.scrollLeft + tab.left - row.left - (row.width - tab.width) / 2;
+    tabRow.scrollTo({ left, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }
+}
+
+function markTabOverflow() {
+  const max = tabRow.scrollWidth - tabRow.clientWidth;
+  const start = tabRow.scrollLeft > 2;
+  const end = tabRow.scrollLeft < max - 2;
+  if (start && end) {
+    tabRow.dataset.more = 'both';
+  } else if (start || end) {
+    tabRow.dataset.more = start ? 'start' : 'end';
+  } else {
+    delete tabRow.dataset.more;
+  }
+}
+
+tabRow.addEventListener('scroll', markTabOverflow, { passive: true });
+new ResizeObserver(markTabOverflow).observe(tabRow);
+
 function switchTab(name, { updateHash = true } = {}) {
   if (!(name in panels)) {
     name = DEFAULT_TAB;
@@ -133,6 +166,7 @@ function switchTab(name, { updateHash = true } = {}) {
   for (const [key, panel] of Object.entries(panels)) {
     panel.hidden = key !== name;
   }
+  revealTab(el.tabButtons.find((btn) => btn.dataset.tab === name));
   el.sessionBar.hidden = !(name in TOOLS);
   if (name in TOOLS) {
     bindBar(hubFor(GROUP[name]));
