@@ -437,8 +437,9 @@ button.step.now {
 }
 
 /* Navbar groups, coloured by role like syntax: read is teal (documents, the link colour), play
-   purple (the site's signature: the instruments), build green. Each group is a faint band of its
-   colour with its name in it; the current tab is underlined in its group's colour. */
+   purple (the site's signature: the instruments), build green. Groups are split by hairlines, each
+   name in its colour; only the current tab is marked, underlined in its group's colour. (Tinted
+   bands read as a selected state, so the groups have none.) */
 .nav-section[data-group="home"] { --grp: var(--soft); --grp-text: var(--soft); }
 .nav-section[data-group="read"] { --grp: var(--teal-bright); --grp-text: var(--teal); }
 .nav-section[data-group="play"] { --grp: var(--purple); --grp-text: var(--purple); }
@@ -459,13 +460,12 @@ button.step.now {
   display: flex;
   align-items: center;
   gap: 0;
-  padding: 0 4px;
-  border-radius: 8px 8px 0 0;
-  background: color-mix(in srgb, var(--grp) 7%, transparent);
 }
 
-.nav-section[data-group="home"] {
-  background: none;
+.nav-section + .nav-section {
+  margin-left: 6px;
+  padding-left: 6px;
+  border-left: 1px solid var(--line);
 }
 
 .nav-section .nav-group {
@@ -499,17 +499,16 @@ button.step.now {
   color: var(--ink);
 }
 
-/* Narrower screens: drop the group names (the bands still group), so the tabs stay on one row. */
+/* Narrower screens: drop the group names (the hairlines still group), so the tabs stay on one row. */
 @media (width <= 1120px) {
   .nav-section .nav-group {
     display: none;
   }
 }
 
-/* Narrower still: one row that scrolls sideways, rather than wrapped rows. Without their names the
-   bands would read as a selected state, so the groups are split by hairlines instead, and only the
-   current tab is marked. The row fades out at whichever edge has more tabs past it (app.js sets
-   data-more), tabs snap into place, and each is a full 44px touch target. */
+/* Narrower still: one row that scrolls sideways, rather than wrapped rows. The row fades out at
+   whichever edge has more tabs past it (app.js sets data-more), tabs snap into place, and each is a
+   full 44px touch target. */
 @media (width <= 900px) {
   .nav-tabs {
     flex-wrap: nowrap;
@@ -540,15 +539,6 @@ button.step.now {
 
   .nav-section {
     flex: none;
-    padding: 0;
-    border-radius: 0;
-    background: none;
-  }
-
-  .nav-section + .nav-section {
-    margin-left: 6px;
-    padding-left: 6px;
-    border-left: 1px solid var(--line);
   }
 
   .nav-tabs button {
