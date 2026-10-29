@@ -9,6 +9,15 @@ import assert from 'node:assert/strict';
 
 const tab = async (name) => (await import(`../js/stand-in.js?${name}`)).StandInTempoSession;
 const settle = (ms = 30) => new Promise((r) => setTimeout(r, ms));
+// Messages between tabs arrive on a later turn of the event loop, and a busy CI runner can take a while:
+// wait for the expected state (up to 5 s) rather than a fixed delay. settle() is for checking that nothing changed.
+const until = async (ready, ms = 5000) => {
+  for (const end = Date.now() + ms; !ready(); await settle(5)) {
+    if (Date.now() > end) {
+      return;
+    }
+  }
+};
 const now = () => performance.now() / 1000;
 
 test('a lone session is solo, and a second session in the document is a participant', async () => {
@@ -18,11 +27,11 @@ test('a lone session is solo, and a second session in the document is a particip
   let fired = 0;
   a.onpeerschange = () => fired++;
   const b = await Session.requestSession();
-  await settle();
+  await until(() => fired === 1);
   assert.equal(a.hasPeers, true);
   assert.equal(fired, 1);
   b.close();
-  await settle();
+  await until(() => !a.hasPeers);
   assert.equal(a.hasPeers, false);
   a.close();
 });
@@ -57,6 +66,8 @@ test('two tabs share tempo and phase, but number beats their own way', async () 
   const B = await tab('sync-b');
   const a = await A.requestSession({ quantum: 4 });
   const b = await B.requestSession({ quantum: 4 });
+  await until(() => a.hasPeers && b.hasPeers);
+  // b took a's timeline when it joined; that timelinechange is queued, so let it fire before counting events.
   await settle();
   assert.equal(a.hasPeers, true, 'a sees b');
   assert.equal(b.hasPeers, true, 'b sees a');
@@ -66,7 +77,7 @@ test('two tabs share tempo and phase, but number beats their own way', async () 
   const sa = a.captureState();
   sa.setTempo(97, now());
   a.commitState(sa);
-  await settle();
+  await until(() => tempoEvents === 1 && Math.abs(b.captureState().tempo - 97) < 1e-9);
   assert.ok(Math.abs(b.captureState().tempo - 97) < 1e-9, 'b follows a’s tempo');
   assert.equal(tempoEvents, 1);
 
@@ -85,7 +96,7 @@ test('two tabs share tempo and phase, but number beats their own way', async () 
   assert.ok(Math.abs(b.captureState().phaseAtTime(t) - after.phaseAtTime(t)) < 1e-6, 'same phase in both');
 
   b.close();
-  await settle();
+  await until(() => !a.hasPeers);
   assert.equal(a.hasPeers, false, 'a closed tab leaves at once');
   a.close();
 });
@@ -95,15 +106,15 @@ test("a stale snapshot doesn't undo another tab's tempo change", async () => {
   const B = await tab('stale-b');
   const a = await A.requestSession();
   const b = await B.requestSession();
-  await settle();
+  await until(() => a.hasPeers && b.hasPeers);
   const stale = b.captureState();
   const sa = a.captureState();
   sa.setTempo(140, now());
   a.commitState(sa);
-  await settle();
+  await until(() => Math.abs(b.captureState().tempo - 140) < 1e-9);
   stale.setIsPlaying(true, now());
   b.commitState(stale);
-  await settle();
+  await until(() => a.captureState().isPlaying);
   assert.ok(Math.abs(a.captureState().tempo - 140) < 1e-9);
   assert.equal(a.captureState().isPlaying, true);
   a.close();
