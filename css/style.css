@@ -883,6 +883,13 @@ article.doc td {
   vertical-align: top;
 }
 
+article.doc img {
+  display: block;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
 /* The wordmark is three words here, so on a phone it shrinks a little and the theme toggle stays beside it. */
 @media (width <= 480px) {
   .top {

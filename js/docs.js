@@ -13,6 +13,7 @@ const DOCS = {
   explainer: { page: 'explainer.html', title: 'Explainer' },
   objections: { page: 'OBJECTIONS.html', title: 'Objections' },
   privacy: { page: 'security-privacy-questionnaire.html', title: 'Security & privacy questionnaire' },
+  slides: { page: 'slides.html', title: 'Slides' },
 };
 // Links between the documents become links between tabs.
 const TAB_FOR_PAGE = {
@@ -25,6 +26,8 @@ const TAB_FOR_PAGE = {
   'OBJECTIONS.md': 'objections',
   'security-privacy-questionnaire.html': 'privacy',
   'security-privacy-questionnaire.md': 'privacy',
+  'slides.html': 'slides',
+  'slides.md': 'slides',
 };
 const LANG = { javascript: 'js', js: 'js', webidl: 'webidl', sh: 'sh', bash: 'sh', shell: 'sh' };
 
@@ -74,6 +77,12 @@ function rewriteLinks(article, panel) {
       a.setAttribute('href', '#');
     } else if (!/^[a-z]+:|^\//i.test(href)) {
       a.setAttribute('href', BASE + href);
+    }
+  }
+  for (const img of article.querySelectorAll('img[src]')) {
+    const src = img.getAttribute('src');
+    if (!/^[a-z]+:|^\//i.test(src)) {
+      img.setAttribute('src', BASE + src);
     }
   }
 }

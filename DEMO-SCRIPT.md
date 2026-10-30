@@ -1,6 +1,6 @@
 # Demo script: Web Tempo Sync, five minutes with Ableton Live
 
-For presenting the proposal live, for example at the W3C Audio Community Group. The demo runs in the middle of the talk, after the API slides. It shows a web page joining Live's Link session through `navigator.tempoSync`, then several independent tools playing in time with Live and each other.
+For presenting the proposal live, for example at the W3C Audio Community Group. The demo runs in the middle of the talk, after the API slides ([slides on the web](https://baylesj.github.io/web-tempo-sync/slides.html) · [PDF](https://baylesj.github.io/web-tempo-sync/slides/web-tempo-sync-tpac-2026.pdf) · [PPTX](https://baylesj.github.io/web-tempo-sync/slides/web-tempo-sync-tpac-2026.pptx) · [Google Slides](https://docs.google.com/presentation/d/1OjVssmxwtGPKzwPL4sRhRMNaq9gzNHt8UJW00j3wA0k/edit?usp=sharing)). It shows a web page joining Live's Link session through `navigator.tempoSync`, then several independent tools playing in time with Live and each other.
 
 ## Before the call
 

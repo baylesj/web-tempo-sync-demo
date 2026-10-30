@@ -19,7 +19,7 @@ Web Tempo Sync is a proposed web API that lets a page play in time with music ap
 
 Each tool loads the first time its tab opens and keeps running when you switch away. **New window** opens the current tab on its own, to see separate pages sync too.
 
-Presenting it? [DEMO-SCRIPT.md](DEMO-SCRIPT.md) is a five-minute run with Ableton Live, with fallbacks and short answers to likely questions.
+Presenting it? [DEMO-SCRIPT.md](DEMO-SCRIPT.md) is a five-minute run with Ableton Live, with fallbacks and short answers to likely questions. The 10-slide W3C Audio Community Group deck (TPAC 2026) is at [baylesj.github.io/web-tempo-sync/slides.html](https://baylesj.github.io/web-tempo-sync/slides.html) ([PDF](https://baylesj.github.io/web-tempo-sync/slides/web-tempo-sync-tpac-2026.pdf) · [PPTX](https://baylesj.github.io/web-tempo-sync/slides/web-tempo-sync-tpac-2026.pptx) · [Google Slides](https://docs.google.com/presentation/d/1OjVssmxwtGPKzwPL4sRhRMNaq9gzNHt8UJW00j3wA0k/edit?usp=sharing)).
 
 ## Where the API comes from
 
